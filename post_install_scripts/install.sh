@@ -6,7 +6,7 @@ chown 'ubuntu':'ubuntu' '/nix'
 
 export TMPDIR='/tmp'
 
-su ubuntu -c 'curl -fsSL https://raw.githubusercontent.com/ES-Nix/get-nix/288cc322ea5e925d993eb654667ceaa607575a38/get-nix.sh | sh'
+su ubuntu -c 'curl -fsSL https://raw.githubusercontent.com/ES-Nix/get-nix/21592dddb73b3dd96cb89ff29da31886ed7fa578/get-nix.sh | sh'
 
 chown 'ubuntu':'ubuntu' --recursive '/home/ubuntu'
 
