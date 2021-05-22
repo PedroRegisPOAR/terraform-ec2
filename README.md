@@ -6,8 +6,8 @@ TODO: $(terraform output public_ip) + ssh
 
 
 ```bash
-make destroy \
-&& make apply \
+make destroy args='-auto-approve' \
+&& make apply args='-auto-approve' \
 && sleep 30 \
 && ssh ubuntu@$(terraform output public_ip) -i ~/.ssh/my-ec2.pem
 ```
