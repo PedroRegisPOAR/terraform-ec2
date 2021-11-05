@@ -2,8 +2,6 @@
 
 TODO: The `key_name` (`my-ec2.pem`) needs some manual work.
 
-TODO: $(terraform output public_ip) + ssh
-
 
 ```bash
 make destroy args='-auto-approve' \
