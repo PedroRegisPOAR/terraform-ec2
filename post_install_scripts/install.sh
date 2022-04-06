@@ -1,17 +1,17 @@
 #!/bin/bash
 
 
-test -d '/nix' || sudo mkdir --mode=0755 '/nix'
-chown 'ubuntu':'ubuntu' '/nix'
-
-# It blows up if it is not set to /tmp, the size of ~/tmp is too small
-export TMPDIR='/tmp'
-
-# The nix official installer does not work for the root user, so
-# is need to run as the ubuntu user
-su ubuntu -c 'curl -fsSL https://raw.githubusercontent.com/ES-Nix/get-nix/21592dddb73b3dd96cb89ff29da31886ed7fa578/get-nix.sh | sh'
-
-chown 'ubuntu':'ubuntu' --recursive '/home/ubuntu' '/nix'
+#test -d '/nix' || sudo mkdir --mode=0755 '/nix'
+#chown 'ubuntu':'ubuntu' '/nix'
+#
+## It blows up if it is not set to /tmp, the size of ~/tmp is too small
+#export TMPDIR='/tmp'
+#
+## The nix official installer does not work for the root user, so
+## is need to run as the ubuntu user
+#su ubuntu -c 'curl -fsSL https://raw.githubusercontent.com/ES-Nix/get-nix/21592dddb73b3dd96cb89ff29da31886ed7fa578/get-nix.sh | sh'
+#
+#chown 'ubuntu':'ubuntu' --recursive '/home/ubuntu' '/nix'
 
 
 #mkdir -p /home/nixuser
