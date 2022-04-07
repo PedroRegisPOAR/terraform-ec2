@@ -3,7 +3,7 @@
 
 
 
-If you use `nix-diren` + `direnv`, just `cd` into the project cloned folder. 
+If you use `nix-direnv` + `direnv`, just `cd` into the project cloned folder. 
 
 ```bash
 nix develop .#
@@ -38,5 +38,4 @@ make destroy args='-auto-approve' \
 TODO: 
 - The `key_name` (`my-ec2.pem`) needs some manual work.
 - Explain all steps need to make it work
-
-
+- Change the sleep 30 with some "smarter logic of retry" 
