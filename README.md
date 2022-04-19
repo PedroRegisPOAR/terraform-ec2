@@ -39,3 +39,7 @@ TODO:
 - The `key_name` (`my-ec2.pem`) needs some manual work.
 - Explain all steps need to make it work
 - Change the sleep 30 with some "smarter logic of retry" 
+
+References
+
+- https://learn.hashicorp.com/tutorials/terraform/module-use
