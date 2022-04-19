@@ -24,8 +24,17 @@ module "ec2_cluster" {
   name           = local.resource_name
   instance_count = 1
 
+  # From:
+  # https://github.com/NixOS/nixpkgs/blob/f00f6180725199227d38098873f1516838ca87bc/nixos/modules/virtualisation/amazon-ec2-amis.nix#L413
+  # ami                    = "ami-0f43f74cbbdd1ddef"
   ami                    = "ami-0ac80df6eff0e70b5"
+  #
+  # https://aws.amazon.com/ec2/instance-types/?nc1=h_ls
+  # instance_type          = "i3.metal"
+  # instance_type          = "t2.nano"
   instance_type          = "t2.micro"
+  # instance_type          = "t2.xlarge"
+  # instance_type          = "t2.2xlarge"
   #iam_instance_profile   = "ec2-role"
   key_name               = local.name
   monitoring             = true
