@@ -10,7 +10,7 @@ module "vpc" {
   private_subnets = ["10.1.1.0/24", "10.1.2.0/24"]
   public_subnets  = ["10.1.11.0/24"]
 
-  enable_nat_gateway = false
+  enable_nat_gateway = true
 
   tags = {
     Name        = local.name

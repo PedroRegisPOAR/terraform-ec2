@@ -1,54 +1,64 @@
 #!/bin/bash
 
 
-#test -d '/nix' || sudo mkdir --mode=0755 '/nix'
-#chown 'ubuntu':'ubuntu' '/nix'
-#
-## It blows up if it is not set to /tmp, the size of ~/tmp is too small
-#export TMPDIR='/tmp'
-#
-## The nix official installer does not work for the root user, so
-## is need to run as the ubuntu user
-#su ubuntu -c 'curl -fsSL https://raw.githubusercontent.com/ES-Nix/get-nix/21592dddb73b3dd96cb89ff29da31886ed7fa578/get-nix.sh | sh'
-#
-#chown 'ubuntu':'ubuntu' --recursive '/home/ubuntu' '/nix'
+
+# TODO: check if the instance size is related to reproducibility of the bug
+#  It blows up if it is not set to /tmp, the size of ~/tmp is too small
+# export TMPDIR='/tmp'
+
+# The nix official installer does not work for the root user, so
+# it is a must to run as one user different from root user, 
+# in this case, the ubuntu user, it comes from the ami-0ac80df6eff0e70b5
+#BASE_URL='https://raw.githubusercontent.com/ES-Nix/get-nix/' \
+#&& SHA256=61bc33388f399fd3de71510b5ca20f159c803491 \
+#&& NIX_RELEASE_VERSION='nix-2.4pre20210823_af94b54' \
+#&& su ubuntu -c 'curl -fsSL '"${BASE_URL}""$SHA256"'/get-nix.sh' | su ubuntu -c 'sh -s -- '${NIX_RELEASE_VERSION}
+
+apt-get update
+apt-get install -y apt-transport-https ca-certificates curl
+
+echo 'Start docker installation...' \
+&& curl -fsSL https://get.docker.com | sh \
+&& getent group docker || groupadd docker \
+&& usermod --append --groups docker "$USER" \
+&& docker --version
+
+cat <<EOF | tee /etc/docker/daemon.json
+{
+    "exec-opts": ["native.cgroupdriver=systemd"]
+}
+EOF
+echo 'End docker installation!'
 
 
-#mkdir -p /home/nixuser
-#echo 'nixuser:x:12345:6789::/home/nixuser:/bin/bash' >> /etc/passwd
-#echo 'nixgroup:x:6789:' >> /etc/group
-#echo "nixuser:123" | chpasswd
-#
-#chmod 0700 /home/nixuser
-#chown 'nixuser':'nixgroup' --recursive '/home/nixuser'
-#
-#mkdir 0755 /run/user/12345
-#chown 'nixuser':'nixgroup' /run/user/12345
-#
-#mkdir --mode=0755 '/nix'
-#chown 'nixuser':'nixgroup' '/nix'
-#
-#
-#echo 'nixuser:100000:65536' >> /etc/subuid
-#echo 'nixgroup:100000:65536' >> /etc/subgid
+curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list
 
-# export XDG_RUNTIME_DIR=/run/user/$(id -u)
-# getcap /nix/store/*-shadow-4.8.1/bin/new?idmap
-# setcap cap_setuid+ep /nix/store/*-shadow-4.8.1/bin/newuidmap
-# setcap cap_setgid+ep /nix/store/*-shadow-4.8.1/bin/newgidmap
+apt-get update
+apt-get install -y kubelet kubeadm kubectl
+apt-mark hold kubelet kubeadm kubectl
 
+cat <<EOF | tee /etc/modules-load.d/k8s.conf
+br_netfilter
+EOF
 
+cat <<EOF | tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
 
-# Old
-#su ubuntu -c 'env > /home/ubuntu/env.log'
-#su ubuntu -c 'nix --version > /home/ubuntu/out.log'
-#su ubuntu -c 'nix-shell -I nixpkgs=channel:nixos-20.09 --packages nixFlakes --run id > log.log'
-#nix-shell \
-#-I nixpkgs=channel:nixos-20.09 \
-#--packages \
-#nixFlakes \
-#--run \
-#'nix develop github:ES-Nix/nix-flakes-shellHook-writeShellScriptBin-defaultPackage/65e9e5a64e3cc9096c78c452b51cc234aa36c24f --command id'
+# sysctl --system
+
+sed \
+-i \
+'s/^GRUB_CMDLINE_LINUX="/&swapaccount=0/' \
+/etc/default/grub \
+&& grub-mkconfig -o /boot/grub/grub.cfg
+
+echo 'vm.swappiness = 0' | tee -a /etc/sysctl.conf
+
+# TODO: document it
+ufw allow 6443
 
 #file_string=$(echo -e "$(cat <<"EOF"
 #echo test
