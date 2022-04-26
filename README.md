@@ -494,3 +494,224 @@ nc -zv 10.1.11.178 22
 ```
 
 
+### Creating cluster with eksctl
+
+
+Some sanity check:
+```bash
+eksctl version
+kubectl version
+aws-iam-authenticator version
+```
+
+
+```bash
+#eksctl \
+#create \
+#cluster \
+#--name test-eks-cluster \
+#--version 1.21 \
+#--region us-east-1 \
+#--nodegroup-name linux-nodes-for-eks \
+#--node-type t2.medium \
+#--nodes 3
+```
+
+```bash
+eksctl \
+create \
+cluster \
+--name test-eks-cluster \
+--version 1.21 \
+--region us-east-1 \
+--nodegroup-name linux-nodes-for-eks \
+--node-type t2.medium \
+--nodes 2 \
+--nodes-min 1 \
+--nodes-max 3 \
+--ssh-access \
+--ssh-public-key ~/.ssh/id_rsa.pub
+```
+Adapted from: 
+- [AWS EKS | Create EKS Cluster on AWS using EKSCTL | Install Kubernetes on AWS](https://www.youtube.com/watch?v=QXzYIKZxxHc&t=56s)
+- Adapted from: https://eksctl.io/usage/vpc-cluster-access/
+
+
+For some reason, for now, you must run:
+```bash
+sed -i -e 's/v1alpha1/v1beta1/' ~/.kube/config
+```
+From: https://stackoverflow.com/a/71470764
+
+
+```bash
+kubectl get nodes
+
+kubectl get ns
+
+kubectl get svc
+```
+
+Getting the IPs: 
+```bash
+kubectl \
+get \
+nodes \
+-o jsonpath='{.items[*].status.addresses[?(@.type=="ExternalIP")].address}'
+```
+
+```bash
+ssh \
+    ec2-user@3.239.70.128 \
+    -i ~/.ssh/id_rsa \
+    -o StrictHostKeyChecking=no
+```
+
+
+### Test creating a pod with an .yaml
+
+
+```bash
+cat << EOF > example.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+spec:
+  containers:
+  - name: test-pod
+    image: busybox
+    command: ['sh', '-c', 'echo The Bench Container 1 is Running ; sleep 100000']
+EOF
+``` 
+
+```bash
+kubectl create -f example.yaml
+kubectl get pods
+
+kubectl logs test-pod
+
+kubectl get pods
+kubectl exec test-pod -i -t -- /bin/sh -c ' ls -al /'
+
+kubectl delete pod test-pod
+rm -fv example.yaml
+```
+
+
+```bash
+cat ~/.kube/config
+
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeU1EUXlOakl5TkRVME1Wb1hEVE15TURReU16SXlORFUwTVZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBT2F4ClM0aXhlK002RXh1S09JTEs1TTZmSllTT3phU2lnVG5NSmlGRTJ5ZTZQQ1NxanI0Sk9LeGNKMWNla245SmdKSloKVEV3V29XdFVXYlJFTFVkSGlTVlFkMm1lWVVPUXU0ZktpNVB1SjFVbjlJRnZHcmc0dkY0L2hVSkxSWU1BdHdNeApCT1g4bm1MdUYyMjg2TmFEU0l4MWV3WXpRUm43aENRRFlYam5sWldmR0NJaWsvTHVmcWpTUVg0UnhCM253SjZqCnJXU0E5MUZvSlVrNnJRSEhKVGh5MjJhbXZnYkVQWDUwcUV3TnhCQ2lFWGptNFNlMzlqOWxrS1ZDd1g0UkllMkUKMkFibGR0NFVLK3JkalRBVEx1cjJld2JKSjJZMGtCVVZqRUlXcURvMlRVU2tXRjZDOXNpTzZNL3ozc2IvRmYrRwo3SG5FOTR0ZW10T245YThvRXgwQ0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZDTEo0ZVMwRjJ2bG96RXhTa1c5elhlbWp1MHNNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFBQldmc3d0Q2lMOVB6RzlVaERBbUxhREw4bmRnVmJKNDRvRTV0YkNrZkc1aXIwcGVkdgpnVUNMQysvb01wVjRRdHZtc05WczRZRWwwVjdmYkJNN21RNUhuMTlnVDZRZGtYZUxDVVJuMkxyQXllWW84NGlUClcxMHh6NlNPb1czWEs3bkJpQjhtRHFaZUo0K0tOaExJdWZIdmEzQUV4L0t0ZTFQQmkyNXJlZU16RlpYUWlRNEgKMkhKTmI3ckM4KzFVQTBrUUpTeTB2TXYyRFZKTFhVd2QzS1pVNlFYQnV6STFYV3VtSHBvYXByeGtUcVJOUFFkWgo5UTFlTWJESFRxVnBnMHRPNzNBZHFaMG11WnNYbEd0SWNzTE13Wlc4QTk5L1BlOG1rdHl4MkVTa1RjY2l5dWRkCnJvcmp6RXNKVDc0ejdLV3RROW9FWnJPTmtlNGFFYnJSbFJqQQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    server: https://A2E3806EF24C5A59799FD738B650B93D.gr7.us-east-1.eks.amazonaws.com
+  name: test-eks-cluster.us-east-1.eksctl.io
+contexts:
+- context:
+    cluster: test-eks-cluster.us-east-1.eksctl.io
+    user: mynixuser@test-eks-cluster.us-east-1.eksctl.io
+  name: mynixuser@test-eks-cluster.us-east-1.eksctl.io
+current-context: mynixuser@test-eks-cluster.us-east-1.eksctl.io
+kind: Config
+preferences: {}
+users:
+- name: mynixuser@test-eks-cluster.us-east-1.eksctl.io
+  user:
+    exec:
+      apiVersion: client.authentication.k8s.io/v1beta1
+      args:
+      - token
+      - -i
+      - test-eks-cluster
+      command: aws-iam-authenticator
+      env:
+      - name: AWS_STS_REGIONAL_ENDPOINTS
+        value: regional
+      - name: AWS_DEFAULT_REGION
+        value: us-east-1
+      provideClusterInfo: false
+```
+
+
+> If you encounter any issues, check CloudFormation console or try:
+```bash
+eksctl utils describe-stacks --region=us-east-1 --cluster=test-eks-cluster
+```
+
+Refs.
+- [AWS EKS - Create Kubernetes cluster on Amazon EKS | the easy way](https://www.youtube.com/watch?v=p6xDCz00TxU)
+
+
+
+### Cleaning and restart from scratch
+
+
+```bash
+eksctl \
+delete \
+cluster \
+--name test-eks-cluster \
+--wait
+```
+From: https://stackoverflow.com/a/60113741
+
+> You can wait 10 mins and try to create your EKS cluster again,
+> or you can choose to use a different cluster name.
+From: https://www.ibm.com/docs/en/cloud-paks/cp-management/1.3.0?topic=management-creating-eks-cluster-fails-due-error-alreadyexistsexception
+
+
+
+```bash
+aws \
+cloudformation \
+delete-stack \
+--stack-name eksctl-test-eks-cluster-cluster
+```
+
+```bash
+rm -fr ~/.kube/
+```
+
+It was showing up:
+```bash
+aws cloudformation list-stacks | rg ROLLBACK_COMPLETE -A 4 -B 6
+```
+
+```bash
+aws cloudformation list-stacks | rg StackStatus
+```
+
+```bash
+aws cloudformation --region us-west-1 list-stacks
+```
+
+```bash
+aws cloudformation --region us-west-1 list-stacks
+```
+
+
+#### Not needed
+
+```bash
+eksctl utils update-cluster-endpoints --name=<clustername> --private-access=true --public-access=false
+```
+
+
+```bash
+apiVersion: v1
+clusters: null
+contexts: null
+current-context: ""
+kind: Config
+preferences: {}
+users: null
+vpc:
+  clusterEndpoints:
+    publicAccess: true
+    privateAccess: true
+```
+
+
+

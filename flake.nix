@@ -3,9 +3,10 @@
 
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
+    nixpkgs-kubectl-1-21-3.url = "github:NixOS/nixpkgs/078285c64535f7c9a8f7f550fa80af9d15107553";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, nixpkgs-kubectl-1-21-3, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
 
@@ -14,6 +15,10 @@
           config = {
             allowUnfree = true;
           };
+        };
+
+        pkgs-kubectl-1-21-3 = import nixpkgs-kubectl-1-21-3 {
+          inherit system;
         };
       in
       {
@@ -27,6 +32,9 @@
 
             awscli
             terraform_0_13
+            eksctl
+            pkgs-kubectl-1-21-3.kubectl
+            aws-iam-authenticator
           ];
 
           shellHook = ''

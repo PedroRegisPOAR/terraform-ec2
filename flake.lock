@@ -29,10 +29,27 @@
         "type": "indirect"
       }
     },
+    "nixpkgs-kubectl-1-21-3": {
+      "locked": {
+        "lastModified": 1628679190,
+        "narHash": "sha256-P41b1kpcGBowIXpUiCgxZBILE3wyNib5syosTR7G0ZQ=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "078285c64535f7c9a8f7f550fa80af9d15107553",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "078285c64535f7c9a8f7f550fa80af9d15107553",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "nixpkgs-kubectl-1-21-3": "nixpkgs-kubectl-1-21-3"
       }
     }
   },
