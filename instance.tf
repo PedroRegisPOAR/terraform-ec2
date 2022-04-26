@@ -22,12 +22,13 @@ module "ec2_cluster" {
   version = "~> 2.0"
 
   name           = local.resource_name
-  instance_count = 5
+  instance_count = 1
 
   # From:
   # https://github.com/NixOS/nixpkgs/blob/f00f6180725199227d38098873f1516838ca87bc/nixos/modules/virtualisation/amazon-ec2-amis.nix#L413
   # ami                    = "ami-0f43f74cbbdd1ddef"
   ami                    = "ami-0ac80df6eff0e70b5"
+  #ami                    = "ami-23475747"
   #
   # https://aws.amazon.com/ec2/instance-types/?nc1=h_ls
   # instance_type          = "i3.metal"
