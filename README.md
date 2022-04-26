@@ -13,6 +13,10 @@ nix develop .#
 aws configure
 ```
 
+```bash
+aws ec2 describe-regions
+```
+
 TODO: check if it is needed in the first time
 ```bash
 make init
@@ -33,6 +37,13 @@ make destroy args='-auto-approve' \
     -i ~/.ssh/my-ec2.pem \
     -o StrictHostKeyChecking=no
 ```
+
+Even after `make destroy args='-auto-approve'` it shows an VPC:
+```bash
+aws ec2 describe-vpcs
+aws cloudformation list-stacks
+```
+Why?
 
 
 #### Install nix?
@@ -347,10 +358,68 @@ HERE
 ```
 
 
+```bash
+
+TERRAFORM_OUTPUT_PUBLIC_IP_0="$(terraform output ec2_instance_public_ip_0)"
+ssh \
+    ubuntu@"${TERRAFORM_OUTPUT_PUBLIC_IP_0}" \
+    -i ~/.ssh/my-ec2.pem \
+    -o StrictHostKeyChecking=no \
+<< HERE
+echo 'loadbalancer' | sudo tee /etc/hostname
+sudo hostname 'loadbalancer'
+
+sudo reboot
+HERE
+
+TERRAFORM_OUTPUT_PUBLIC_IP_0="$(terraform output ec2_instance_public_ip_0)"
+ssh \
+    ubuntu@"${TERRAFORM_OUTPUT_PUBLIC_IP_0}" \
+    -i ~/.ssh/my-ec2.pem \
+    -o StrictHostKeyChecking=no \
+<< HERE
+sudo apt-get update \
+&& sudo apt-get upgrade -y \
+&& sudo apt-get install -y haproxy
+HERE
+```
+
+cat << EOF | sudo tee -a /etc/haproxy/haproxy.cfg
+frontend fe-apiserver
+   bind 54.242.94.244:6443
+   mode tcp
+   option tcplog
+   default_backend be-apiserver
+EOF
+
+echo 'TERRAFORM_OUTPUT_PUBLIC_IP_1='"${TERRAFORM_OUTPUT_PUBLIC_IP_1}"
+echo 'TERRAFORM_OUTPUT_PUBLIC_IP_2='"${TERRAFORM_OUTPUT_PUBLIC_IP_2}"
+
+
+cat << EOF | sudo tee -a /etc/haproxy/haproxy.cfg
+backend be-apiserver
+   mode tcp
+   option tcplog
+   option tcp-check
+   balance roundrobin
+   default-server inter 10s downinter 5s rise 2 fall 2 slowstart 60s maxconn 250 maxqueue 256 weight 100
+
+   server kube-master-0 "${TERRAFORM_OUTPUT_PUBLIC_IP_0}":6443 check
+   server kube-master-1 "${TERRAFORM_OUTPUT_PUBLIC_IP_1}":6443 check
+EOF
 
 ```bash
-sudo kubeadm init phase upload-certs --upload-certs --pod-network-cidr=10.244.0.0/16
+sudo \
+kubeadm \
+init \
+--control-plane-endpoint "${TERRAFORM_OUTPUT_PUBLIC_IP_0}:6443" \
+--upload-certs \
+--pod-network-cidr=192.168.0.0/16 
+```
+
+```bash
 # sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+sudo kubeadm init --upload-certs --pod-network-cidr=10.244.0.0/16
 
 mkdir -p "${HOME}"/.kube
 sudo cp -i /etc/kubernetes/admin.conf "${HOME}"/.kube/config
@@ -364,17 +433,16 @@ watch --interval=1 kubectl get pods -A
 
 ```bash
 CERTIFICATE_KEY="$(sudo kubeadm init phase upload-certs --upload-certs | sed '3q;d')"
-```
 
-
-```bash
+sudo \
 kubeadm \
 token \
 create \
 --certificate-key "${CERTIFICATE_KEY}" \
 --print-join-command | sed 's/ / \\\n/g'
+```
 
-
+```bash
 # If the node to be joint is an "main node" 
 kubeadm \
 join \
