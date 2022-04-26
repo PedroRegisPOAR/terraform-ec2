@@ -26,7 +26,7 @@ make plan
 ```bash
 make destroy args='-auto-approve' \
 && make apply args='-auto-approve' \
-&& TERRAFORM_OUTPUT_PUBLIC_IP="$(terraform output public_ip)" \
+&& TERRAFORM_OUTPUT_PUBLIC_IP="$(terraform output ec2_instance_public_ip)" \
 && sleep 30 \
 && ssh \
     ubuntu@"${TERRAFORM_OUTPUT_PUBLIC_IP}" \
