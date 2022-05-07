@@ -13,9 +13,23 @@ nix develop .#
 aws configure
 ```
 
+
+```bash
+aws configure list 
+```
+
 ```bash
 aws ec2 describe-regions
 ```
+
+```bash
+aws ec2 describe-images \
+    --owners amazon \
+    --filters "Name=name,Values=amzn*gp2" "Name=virtualization-type,Values=hvm" "Name=root-device-type,Values=ebs" \
+    --query "sort_by(Images, &CreationDate)[-1].ImageId" \
+    --output text
+```
+
 
 TODO: check if it is needed in the first time
 ```bash
@@ -114,6 +128,45 @@ From:
 - https://www.weave.works/docs/net/latest/kubernetes/kube-addon/#-installation
 
 
+
+#### Kubernetes from apt
+
+
+Be sure that you have reboot if you are starting from scratch.
+
+After the reboot:
+```bash
+TERRAFORM_OUTPUT_PUBLIC_IP="$(terraform output ec2_instance_public_ip)" \
+&& ssh \
+    ubuntu@"${TERRAFORM_OUTPUT_PUBLIC_IP}" \
+    -i ~/.ssh/my-ec2.pem \
+    -o StrictHostKeyChecking=no
+```
+
+```bash
+# sudo kubeadm config images pull
+# sudo kubeadm config images list
+
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16 \
+&& echo 'End of kubeadm init --pod-network-cidr=10.244.0.0/16' \
+&& mkdir -pv "$HOME"/.kube \
+&& sudo cp -fv /etc/kubernetes/admin.conf "$HOME"/.kube/config \
+&& sudo chown -v $(id -u):$(id -g) "$HOME"/.kube/config \
+&& sleep 5 \
+&& while ! nc -tz localhost 6443; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 0.5; done \
+&& kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
+watch --interval=1  kubectl get pods -A
+```
+Refs.:
+- https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/
+
+
+For some reason, for now, you must run:
+```bash
+sed -i -e 's/v1alpha1/v1beta1/' ~/.kube/config
+```
+From: https://stackoverflow.com/a/71470764
 
 #### Installs kubernetes with nix
 
@@ -583,10 +636,12 @@ spec:
     image: busybox
     command: ['sh', '-c', 'echo The Bench Container 1 is Running ; sleep 100000']
 EOF
+
+kubectl create -f example.yaml
 ``` 
 
 ```bash
-kubectl create -f example.yaml
+
 kubectl get pods
 
 kubectl logs test-pod
@@ -714,4 +769,50 @@ vpc:
 ```
 
 
+
+###
+
+
+```bash
+sudo apt-get update \
+&& sudo apt-get install -y \
+  clang \
+  cmake \
+  ninja-build \
+  pkg-config \
+  libgtk-3-dev \
+  liblzma-dev \
+&& sudo snap install android-studio --classic  
+```
+
+
+```bash
+flutter run
+```
+
+
+```bash
+sudo apt-get update \
+&& sudo apt-get install -y \
+make \
+podman
+```
+
+
+sudo snap install android-studio --classic
+	
+sudo apt install default-jdk
+
+```bash
+nano ~/.ssh/id_rsa \
+&& chmod 0600 ~/.ssh/id_rsa
+```
+
+```bash
+git clone git@github.com:imobanco/income-back.git \
+&& cd income-back \
+&& make config.env \
+&& make build \
+&& make up.logs
+```
 

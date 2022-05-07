@@ -24,19 +24,42 @@ module "ec2_cluster" {
   name           = local.resource_name
   instance_count = 1
 
-  # From:
-  # https://github.com/NixOS/nixpkgs/blob/f00f6180725199227d38098873f1516838ca87bc/nixos/modules/virtualisation/amazon-ec2-amis.nix#L413
+  # It is broken!
+  # From: https://github.com/NixOS/nixpkgs/blob/f00f6180725199227d38098873f1516838ca87bc/nixos/modules/virtualisation/amazon-ec2-amis.nix#L413
   # ami                    = "ami-0f43f74cbbdd1ddef"
+  # ami                    = "ami-0ac80df6eff0e70b5"
+
+  # This is an Ubuntu 22.04 amd64
+  # uname -a
+  # From: https://cloud-images.ubuntu.com/locator/
+  # ami                    = "ami-09d56f8956ab235b3"
+
+  # 20.04
+  # ami                    = "ami-0c4f7023847b90238"
+
+  # 18.04
   ami                    = "ami-0ac80df6eff0e70b5"
+
+  # 14.04
+  # ami                    = "ami-0b174091769efec66"
+
+  # Ubuntu 22.04 arm
+  # From: https://cloud-images.ubuntu.com/locator/
+  # ami                    = "ami-02ddaf75821f25213"
+
   #ami                    = "ami-23475747"
   #
   # https://aws.amazon.com/ec2/instance-types/?nc1=h_ls
   # instance_type          = "i3.metal"
   # instance_type          = "t2.nano"
   # instance_type          = "t2.micro"
-  instance_type          = "t2.medium"
-  # instance_type          = "t2.xlarge"
+  # instance_type          = "t2.medium"
+  instance_type          = "t2.xlarge"
   # instance_type          = "t2.2xlarge"
+
+  # instance_type          = "r6g.4xlarge"
+  # instance_type          = "c5.large"
+
   #iam_instance_profile   = "ec2-role"
   key_name               = local.name
   monitoring             = true
