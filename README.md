@@ -6,6 +6,19 @@
 If you use `nix-direnv` + `direnv`, just `cd` into the project cloned folder. 
 
 ```bash
+nix \
+flake \
+clone \
+github:PedroRegisPOAR/terraform-ec2/dev \
+--dest terraform-ec2 \
+&& cd terraform-ec2 \
+&& ( command -v direnv && direnv allow ) || nix develop '.#'
+```
+Refs.:
+- https://stackoverflow.com/a/53900466
+
+Maybe useful:
+```bash
 nix develop .#
 ```
 
@@ -23,15 +36,17 @@ aws ec2 describe-regions
 ```
 
 ```bash
-aws ec2 describe-images \
-    --owners amazon \
-    --filters "Name=name,Values=amzn*gp2" "Name=virtualization-type,Values=hvm" "Name=root-device-type,Values=ebs" \
-    --query "sort_by(Images, &CreationDate)[-1].ImageId" \
-    --output text
+aws \
+ec2 \
+describe-images \
+--owners amazon \
+--filters "Name=name,Values=amzn*gp2" "Name=virtualization-type,Values=hvm" "Name=root-device-type,Values=ebs" \
+--query "sort_by(Images, &CreationDate)[-1].ImageId" \
+--output text
 ```
 
 
-TODO: check if it is needed in the first time
+TODO: check if it is a must always in the first time.
 ```bash
 make init
 ```
@@ -45,7 +60,7 @@ make plan
 make destroy args='-auto-approve' \
 && make apply args='-auto-approve' \
 && TERRAFORM_OUTPUT_PUBLIC_IP="$(terraform output ec2_instance_public_ip)" \
-&& sleep 30 \
+&& while ! nc -tz "${TERRAFORM_OUTPUT_PUBLIC_IP}" 22; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 0.5; done \
 && ssh \
     ubuntu@"${TERRAFORM_OUTPUT_PUBLIC_IP}" \
     -i ~/.ssh/my-ec2.pem \
@@ -57,7 +72,51 @@ Even after `make destroy args='-auto-approve'` it shows an VPC:
 aws ec2 describe-vpcs
 aws cloudformation list-stacks
 ```
-Why?
+
+```bash
+aws ec2 describe-subnets | rg available
+aws ec2 describe-subnets | rg SubnetId 
+```
+
+```bash
+aws \
+ec2 \
+delete-subnet \
+--subnet-id=subnet-10923666 \
+--subnet-id=subnet-c7a5d598 \
+--subnet-id=subnet-433c4162
+```
+
+
+```bash
+#!/bin/bash
+vpc="vpc-53f1722e" 
+region="us-west-1"
+aws ec2 describe-vpc-peering-connections --region $region --filters 'Name=requester-vpc-info.vpc-id,Values='$vpc | grep VpcPeeringConnectionId
+aws ec2 describe-nat-gateways --region $region --filter 'Name=vpc-id,Values='$vpc | grep NatGatewayId
+aws ec2 describe-instances --region $region --filters 'Name=vpc-id,Values='$vpc | grep InstanceId
+aws ec2 describe-vpn-gateways --region $region --filters 'Name=attachment.vpc-id,Values='$vpc | grep VpnGatewayId
+aws ec2 describe-network-interfaces --region $region --filters 'Name=vpc-id,Values='$vpc | grep NetworkInterfaceId
+
+aws cloudformation list-stacks | grep StackStatus
+
+aws ec2 describe-internet-gateways
+aws ec2 describe-subnets | grep SubnetId
+aws ec2 describe-vpcs
+
+aws resourcegroupstaggingapi get-resources --region us-west-1
+```
+Refs.:
+- https://serverfault.com/a/1010868
+- https://aws.amazon.com/premiumsupport/knowledge-center/troubleshoot-dependency-error-delete-vpc/
+- https://serverfault.com/a/747868
+
+
+```bash
+aws ec2 detach-internet-gateway --internet-gateway-id=igw-1e887e64 --vpc-id=vpc-53f1722e
+aws ec2 delete-internet-gateway --internet-gateway-id=igw-1e887e64
+aws ec2 delete-vpc --vpc-id=vpc-e2087c86
+```
 
 
 #### Install nix?
@@ -129,7 +188,7 @@ From:
 
 
 
-#### Kubernetes from apt
+#### Kubernetes single main node (control plane) and stacked etcd, all from apt
 
 
 Be sure that you have reboot if you are starting from scratch.
@@ -137,6 +196,7 @@ Be sure that you have reboot if you are starting from scratch.
 After the reboot:
 ```bash
 TERRAFORM_OUTPUT_PUBLIC_IP="$(terraform output ec2_instance_public_ip)" \
+&& while ! nc -tz "${TERRAFORM_OUTPUT_PUBLIC_IP}" 22; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 0.5; done \
 && ssh \
     ubuntu@"${TERRAFORM_OUTPUT_PUBLIC_IP}" \
     -i ~/.ssh/my-ec2.pem \
@@ -154,9 +214,8 @@ sudo kubeadm init --pod-network-cidr=10.244.0.0/16 \
 && sudo chown -v $(id -u):$(id -g) "$HOME"/.kube/config \
 && sleep 5 \
 && while ! nc -tz localhost 6443; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 0.5; done \
-&& kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
-
-watch --interval=1  kubectl get pods -A
+&& kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml \
+&& watch --interval=1  kubectl get pods -A
 ```
 Refs.:
 - https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/
@@ -175,31 +234,31 @@ From: https://stackoverflow.com/a/71470764
 nix \
 profile \
 install \
-nixpkgs#cni \
-nixpkgs#cni-plugins \
-nixpkgs#conntrack-tools \
-nixpkgs#cri-o \
-nixpkgs#cri-tools \
-nixpkgs#docker \
-nixpkgs#ebtables \
-nixpkgs#flannel \
-nixpkgs#kubernetes \
-nixpkgs#socat \
-&& sudo cp "$(nix eval --raw nixpkgs#docker)"/etc/systemd/system/{docker.service,docker.socket} /etc/systemd/system/ \
+github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#cni \
+github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#cni-plugins \
+github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#conntrack-tools \
+github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#cri-o \
+github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#cri-tools \
+github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#docker \
+github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#ebtables \
+github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#flannel \
+github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#kubernetes \
+github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#socat \
+&& sudo cp "$(nix eval --raw github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#docker)"/etc/systemd/system/{docker.service,docker.socket} /etc/systemd/system/ \
 && getent group docker || sudo groupadd docker \
 && sudo usermod --append --groups docker "$USER" \
 && sudo systemctl enable --now docker
 
 echo 'Start bypass sudo stuff...' \
-&& NIX_CNI_PATH="$(nix eval --raw nixpkgs#cni)"/bin \
-&& NIX_CNI_PLUGINS_PATH="$(nix eval --raw nixpkgs#cni-plugins)"/bin \
-&& NIX_FLANNEL_PATH="$(nix eval --raw nixpkgs#flannel)"/bin \
-&& NIX_CRI_TOOLS_PATH="$(nix eval --raw nixpkgs#cri-tools)"/bin \
-&& NIX_EBTABLES_PATH="$(nix eval --raw nixpkgs#ebtables)"/bin \
-&& NIX_SOCAT_PATH="$(nix eval --raw nixpkgs#socat)"/bin \
-&& CONNTRACK_NIX_PATH="$(nix eval --raw nixpkgs#conntrack-tools)/bin" \
-&& DOCKER_NIX_PATH="$(nix eval --raw nixpkgs#docker)/bin" \
-&& KUBERNETES_BINS_NIX_PATH="$(nix eval --raw nixpkgs#kubernetes)/bin" \
+&& NIX_CNI_PATH="$(nix eval --raw github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#cni)"/bin \
+&& NIX_CNI_PLUGINS_PATH="$(nix eval --raw github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#cni-plugins)"/bin \
+&& NIX_FLANNEL_PATH="$(nix eval --raw github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#flannel)"/bin \
+&& NIX_CRI_TOOLS_PATH="$(nix eval --raw github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#cri-tools)"/bin \
+&& NIX_EBTABLES_PATH="$(nix eval --raw github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#ebtables)"/bin \
+&& NIX_SOCAT_PATH="$(nix eval --raw github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#socat)"/bin \
+&& CONNTRACK_NIX_PATH="$(nix eval --raw github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#conntrack-tools)/bin" \
+&& DOCKER_NIX_PATH="$(nix eval --raw github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#docker)/bin" \
+&& KUBERNETES_BINS_NIX_PATH="$(nix eval --raw github:NixOS/nixpkgs/51d859cdab1ef58755bd342d45352fc607f5e59b#kubernetes)/bin" \
 && echo 'Defaults    secure_path = /sbin:/bin:/usr/sbin:/usr/bin:'"$KUBERNETES_BINS_NIX_PATH"':'"$DOCKER_NIX_PATH"':'"$CONNTRACK_NIX_PATH"':'"$NIX_CNI_PLUGINS_PATH"':'"$NIX_CRI_TOOLS_PATH"':'"$NIX_EBTABLES_PATH"':'"$NIX_SOCAT_PATH"':'"$NIX_FLANNEL_PATH"':'"$NIX_CNI_PATH"  | sudo tee -a /etc/sudoers.d/"$USER" \
 && echo 'End bypass sudo stuff...'
 
@@ -242,33 +301,33 @@ cat <<EOF | sudo tee /etc/docker/daemon.json
 }
 EOF
 
-sudo systemctl enable --now kubelet
+#sudo systemctl enable --now kubelet
+#
+#cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+#br_netfilter
+#EOF
+#
+#cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+#net.bridge.bridge-nf-call-ip6tables = 1
+#net.bridge.bridge-nf-call-iptables = 1
+#EOF
+#sudo sysctl --system
+#
+#sudo \
+#    sed \
+#    --in-place \
+#    's/^GRUB_CMDLINE_LINUX="/&swapaccount=0/' \
+#    /etc/default/grub \
+#&& sudo grub-mkconfig -o /boot/grub/grub.cfg
 
-cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
-br_netfilter
-EOF
+#echo 'vm.swappiness = 0' | sudo tee -a /etc/sysctl.conf
 
-cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-ip6tables = 1
-net.bridge.bridge-nf-call-iptables = 1
-EOF
-sudo sysctl --system
-
-sudo \
-    sed \
-    --in-place \
-    's/^GRUB_CMDLINE_LINUX="/&swapaccount=0/' \
-    /etc/default/grub \
-&& sudo grub-mkconfig -o /boot/grub/grub.cfg
-
-echo 'vm.swappiness = 0' | sudo tee -a /etc/sysctl.conf
-
-nix store gc --verbose \
-&& nix store optimise --verbose
+#nix store gc --verbose \
+#&& nix store optimise --verbose
 
 # sudo su
-echo 'kube-master' | sudo tee /etc/hostname
-sudo hostname kube-master
+echo 'k8s-single-main-node' | sudo tee /etc/hostname
+sudo hostname k8s-single-main-node
 
 sudo reboot
 ```
@@ -278,6 +337,31 @@ Refs.:
 - https://github.com/NixOS/nixpkgs/issues/70407
 - https://github.com/moby/moby/tree/e9ab1d425638af916b84d6e0f7f87ef6fa6e6ca9/contrib/init/systemd
 
+
+```bash
+# sudo kubeadm config images pull
+# sudo kubeadm config images list
+
+sudo kubeadm init --pod-network-cidr=192.168.0.0/16 \
+&& mkdir -p "${HOME}"/.kube \
+&& sudo cp -i /etc/kubernetes/admin.conf "${HOME}"/.kube/config \
+&& sudo chown "$(id -u)":"$(id -g)" "${HOME}"/.kube/config \
+&& sleep 5 \
+&& while ! nc -tz localhost 6443; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 0.5; done \
+&& kubectl \
+    create \
+      -f https://docs.projectcalico.org/manifests/tigera-operator.yaml \
+      -f https://docs.projectcalico.org/manifests/custom-resources.yaml \
+&& watch --interval=1 kubectl get pods -A
+```
+
+```bash
+kubectl delete all --all --all-namespaces
+```
+
+```bash
+systemctl list-units --full --all | grep kub
+```
 
 ```bash
 echo 'kube-worker-1' | sudo tee /etc/hostname
