@@ -54,46 +54,46 @@ BASE_URL='https://raw.githubusercontent.com/ES-Nix/get-nix/' \
 #apt-get update
 #sh -c 'apt-get install -y kubelet kubeadm'
 #apt-mark hold kubelet kubeadm
-
-
-cat <<EOF | tee /etc/modules-load.d/k8s.conf
-br_netfilter
-EOF
-
-cat <<EOF | tee /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-ip6tables = 1
-net.bridge.bridge-nf-call-iptables = 1
-EOF
-
-# sysctl --system
-
-echo 'Start cgroup v2 instalation...' \
-&& mkdir -p /etc/systemd/system/user@.service.d \
-&& sh -c "echo '[Service]' >> /etc/systemd/system/user@.service.d/delegate.conf" \
-&& sh -c "echo 'Delegate=yes' >> /etc/systemd/system/user@.service.d/delegate.conf" \
-&& sed \
---in-place \
-'s/^GRUB_CMDLINE_LINUX="/&swapaccount=0 systemd.unified_cgroup_hierarchy=1/' \
-/etc/default/grub \
-&& grub-mkconfig -o /boot/grub/grub.cfg \
-&& echo 'End cgroup v2 instalation...'
-
-#sed \
-#-i \
-#'s/^GRUB_CMDLINE_LINUX="/&swapaccount=0/' \
+#
+#
+#cat <<EOF | tee /etc/modules-load.d/k8s.conf
+#br_netfilter
+#EOF
+#
+#cat <<EOF | tee /etc/sysctl.d/k8s.conf
+#net.bridge.bridge-nf-call-ip6tables = 1
+#net.bridge.bridge-nf-call-iptables = 1
+#EOF
+#
+## sysctl --system
+#
+#echo 'Start cgroup v2 instalation...' \
+#&& mkdir -p /etc/systemd/system/user@.service.d \
+#&& sh -c "echo '[Service]' >> /etc/systemd/system/user@.service.d/delegate.conf" \
+#&& sh -c "echo 'Delegate=yes' >> /etc/systemd/system/user@.service.d/delegate.conf" \
+#&& sed \
+#--in-place \
+#'s/^GRUB_CMDLINE_LINUX="/&swapaccount=0 systemd.unified_cgroup_hierarchy=1/' \
 #/etc/default/grub \
-#&& grub-mkconfig -o /boot/grub/grub.cfg
-
-echo 'vm.swappiness = 0' | tee -a /etc/sysctl.conf
-
-# TODO: document it
-ufw allow 6443
-
-# Is a must to set an hostname?
-# hostname 'k8s-single-master'
-
-# TODO: document it
-reboot
+#&& grub-mkconfig -o /boot/grub/grub.cfg \
+#&& echo 'End cgroup v2 instalation...'
+#
+##sed \
+##-i \
+##'s/^GRUB_CMDLINE_LINUX="/&swapaccount=0/' \
+##/etc/default/grub \
+##&& grub-mkconfig -o /boot/grub/grub.cfg
+#
+#echo 'vm.swappiness = 0' | tee -a /etc/sysctl.conf
+#
+## TODO: document it
+#ufw allow 6443
+#
+## Is a must to set an hostname?
+## hostname 'k8s-single-master'
+#
+## TODO: document it
+#reboot
 
 
 #file_string=$(echo -e "$(cat <<"EOF"

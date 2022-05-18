@@ -32,17 +32,17 @@ module "ec2_cluster" {
   # This is an Ubuntu 22.04 amd64
   # uname -a
   # From: https://cloud-images.ubuntu.com/locator/
-  # ami                    = "ami-09d56f8956ab235b3"
+  ami                    = "ami-09d56f8956ab235b3"
 
   # 20.04
-  #ami                    = "ami-0c4f7023847b90238"
+  # ami                    = "ami-0c4f7023847b90238"
 
   # NixOS AMI, is working
   # https://github.com/NixOS/nixpkgs/blob/0be721b12930887fd883260ddb29c80225eaa9f3/nixos/modules/virtualisation/amazon-ec2-amis.nix#L411
   # ami                    = "ami-099756bfda4540da0"
 
   # 18.04
-  ami                    = "ami-0ac80df6eff0e70b5"
+  # ami                    = "ami-0ac80df6eff0e70b5"
 
   # 14.04
   # ami                    = "ami-0b174091769efec66"
@@ -57,8 +57,8 @@ module "ec2_cluster" {
   # instance_type          = "i3.metal"
   # instance_type          = "t2.nano"
   # instance_type          = "t2.micro"
-  instance_type          = "t2.medium"
-  # instance_type          = "t2.xlarge"
+  # instance_type          = "t2.medium"
+  instance_type          = "t2.xlarge"
   # instance_type          = "t2.2xlarge"
 
   # instance_type          = "r6g.4xlarge"

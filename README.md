@@ -60,11 +60,12 @@ make plan
 make destroy args='-auto-approve' \
 && make apply args='-auto-approve' \
 && TERRAFORM_OUTPUT_PUBLIC_IP="$(terraform output ec2_instance_public_ip)" \
-&& while ! nc -tz "${TERRAFORM_OUTPUT_PUBLIC_IP}" 22; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 0.5; done \
+&& while ! nc -t -w 1 -z "${TERRAFORM_OUTPUT_PUBLIC_IP}" 22; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 0.5; done \
 && ssh \
     ubuntu@"${TERRAFORM_OUTPUT_PUBLIC_IP}" \
     -i ~/.ssh/my-ec2.pem \
-    -o StrictHostKeyChecking=no
+    -o StrictHostKeyChecking=no \
+    -o StrictHostKeyChecking=accept-new
 ```
 
 Even after `make destroy args='-auto-approve'` it shows an VPC:
@@ -196,7 +197,7 @@ Be sure that you have reboot if you are starting from scratch.
 After the reboot:
 ```bash
 TERRAFORM_OUTPUT_PUBLIC_IP="$(terraform output ec2_instance_public_ip)" \
-&& while ! nc -tz "${TERRAFORM_OUTPUT_PUBLIC_IP}" 22; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 0.5; done \
+&& while ! nc -t -w 1 -z "${TERRAFORM_OUTPUT_PUBLIC_IP}" 22; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 0.5; done \
 && ssh \
     ubuntu@"${TERRAFORM_OUTPUT_PUBLIC_IP}" \
     -i ~/.ssh/my-ec2.pem \
@@ -213,7 +214,7 @@ sudo kubeadm init --pod-network-cidr=10.244.0.0/16 \
 && sudo cp -fv /etc/kubernetes/admin.conf "$HOME"/.kube/config \
 && sudo chown -v $(id -u):$(id -g) "$HOME"/.kube/config \
 && sleep 5 \
-&& while ! nc -tz localhost 6443; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 0.5; done \
+&& while ! nc -t -w 1 -z localhost 6443; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 0.5; done \
 && kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml \
 && watch --interval=1  kubectl get pods -A
 ```
@@ -301,26 +302,26 @@ cat <<EOF | sudo tee /etc/docker/daemon.json
 }
 EOF
 
-#sudo systemctl enable --now kubelet
-#
-#cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
-#br_netfilter
-#EOF
-#
-#cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
-#net.bridge.bridge-nf-call-ip6tables = 1
-#net.bridge.bridge-nf-call-iptables = 1
-#EOF
-#sudo sysctl --system
-#
-#sudo \
-#    sed \
-#    --in-place \
-#    's/^GRUB_CMDLINE_LINUX="/&swapaccount=0/' \
-#    /etc/default/grub \
-#&& sudo grub-mkconfig -o /boot/grub/grub.cfg
+sudo systemctl enable --now kubelet
 
-#echo 'vm.swappiness = 0' | sudo tee -a /etc/sysctl.conf
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+br_netfilter
+EOF
+
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+sudo sysctl --system
+
+sudo \
+    sed \
+    --in-place \
+    's/^GRUB_CMDLINE_LINUX="/&swapaccount=0/' \
+    /etc/default/grub \
+&& sudo grub-mkconfig -o /boot/grub/grub.cfg
+
+echo 'vm.swappiness = 0' | sudo tee -a /etc/sysctl.conf
 
 #nix store gc --verbose \
 #&& nix store optimise --verbose
@@ -347,7 +348,7 @@ sudo kubeadm init --pod-network-cidr=192.168.0.0/16 \
 && sudo cp -i /etc/kubernetes/admin.conf "${HOME}"/.kube/config \
 && sudo chown "$(id -u)":"$(id -g)" "${HOME}"/.kube/config \
 && sleep 5 \
-&& while ! nc -tz localhost 6443; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 0.5; done \
+&& while ! nc -t -w 1 -z localhost 6443; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 0.5; done \
 && kubectl \
     create \
       -f https://docs.projectcalico.org/manifests/tigera-operator.yaml \
@@ -858,22 +859,107 @@ vpc:
 
 
 ```bash
+nix profile install nixpkgs#flutter
+```
+
+
+```bash
+nix \
+shell \
+--impure \
+nixpkgs#clang \
+nixpkgs#cmake \
+nixpkgs#flutter \
+nixpkgs#ninja \
+nixpkgs#pkg-config \
+nixpkgs#gtk3.dev \
+nixpkgs#util-linux.dev \
+nixpkgs#glib.dev
+```
+
+```bash
 sudo apt-get update \
 && sudo apt-get install -y \
   clang \
   cmake \
   ninja-build \
   pkg-config \
+  gtk+-3 \
   libgtk-3-dev \
-  liblzma-dev \
-&& sudo snap install android-studio --classic  
+  liblzma-dev
+```
+
+```bash
+sudo apt-get update \
+&& sudo apt-get install -y \
+    libgtk-3-dev
+```
+
+```bash
+sudo apt install libblkid-dev
+```
+
+```bash
+flutter config --enable-linux-desktop
+
+flutter create my_app \
+&& cd my_app \
+&& flutter clean \
+&& flutter build linux
+```
+
+```bash
+pkg-config --variable pc_path pkg-config
+```
+From:
+- https://stackoverflow.com/questions/50031080/pkg-config-cannot-find-gtk-3-0
+
+
+
+```bash
+nix \
+store \
+ls \
+--store https://cache.nixos.org/ \
+--long \
+--recursive \
+"$(nix eval --raw nixpkgs#gtk3.dev)"/lib/pkgconfig/
 ```
 
 
 ```bash
-flutter run
+nix \
+store \
+cat \
+--store https://cache.nixos.org/ \
+"$(nix eval --raw nixpkgs#gtk3.dev)"/lib/pkgconfig/gtk+-3.0.pc
 ```
 
+
+```bash
+export PKG_CONFIG_PATH="$(nix eval --raw nixpkgs#gtk3.dev)/lib/pkgconfig:"
+
+export PKG_CONFIG_PATH+="$(nix eval --raw nixpkgs#util-linux)/lib/pkgconfig:"
+export PKG_CONFIG_PATH+="$(nix eval --raw nixpkgs#glib.dev)/lib/pkgconfig:"
+
+export PKG_CONFIG_PATH+='/usr/local/lib/x86_64-linux-gnu/pkgconfig:'
+export PKG_CONFIG_PATH+='/usr/local/lib/pkgconfig:'
+export PKG_CONFIG_PATH+='/usr/local/share/pkgconfig:'
+export PKG_CONFIG_PATH+='/usr/lib/x86_64-linux-gnu/pkgconfig:'
+export PKG_CONFIG_PATH+='/usr/lib/pkgconfig:'
+export PKG_CONFIG_PATH+='/usr/share/pkgconfig'
+
+pkg-config --modversion gtk+-3.0
+pkg-config --modversion glib-2.0
+pkg-config --modversion gio-2.0
+pkg-config --modversion blkid
+```
+
+Refs.:
+- https://stackoverflow.com/questions/55547435/how-to-install-libgtk2-0-dev-on-nixos
+- 
+
+### 
 
 ```bash
 sudo apt-get update \
@@ -884,10 +970,12 @@ podman
 
 
 sudo snap install android-studio --classic
-	
+
 sudo apt install default-jdk
 
 ```bash
+test -d ~/.ssh || mkdir -pv ~/.ssh
+
 nano ~/.ssh/id_rsa \
 && chmod 0600 ~/.ssh/id_rsa
 ```
@@ -900,3 +988,43 @@ git clone git@github.com:imobanco/income-back.git \
 && make up.logs
 ```
 
+
+
+###
+
+```bash
+nix shell nixpkgs#ascinema
+
+asciinema rec demo"$(date +'%d-%m-%Y %H:%M:%S:%3N')".cast
+```
+
+```bash
+sudo apt-get -qq -y update \
+&& sudo sh -c 'apt-get install -y nix-bin' \
+&& sudo nix run nixpkgs#qemu --extra-experimental-features 'nix-command flakes' -- --version
+```
+
+```bash
+QEMU emulator version 7.0.0
+Copyright (c) 2003-2022 Fabrice Bellard and the QEMU Project developers
+```
+
+```bash
+sudo \
+nix \
+run \
+nixpkgs#hello \
+--extra-experimental-features 'nix-command flakes'
+```
+
+
+```bash
+nix upgrade-nix
+```
+
+
+### Other
+
+TODO: 
+nix store ls --store https://cache.nixos.org/ -l /nix/store/0i2jd68mp5g6h2sa5k9c85rb80sn8hi9-hello-2.10/bin/hello
+nix store ls --store https://cache.nixos.org/ --long --recursive "$(nix eval --raw nixpkgs#hello)"
