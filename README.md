@@ -1077,7 +1077,7 @@ cat cache-pub-key.pem
 
 
 KEY_FILE=cache-priv-key.pem
-CACHE=cache-priv-key.pem
+CACHE=s3://example-es
 BUILDS=("nixpkgs#hello" "nixpkgs#figlet")
 
 echo "${BUILDS[@]}" | xargs nix build

@@ -16,7 +16,7 @@ resource "aws_s3_bucket" "example-es" {
   force_destroy = true
 }
 
-resource "aws_s3_bucket_policy" "allow_nix_cache" {
+resource "aws_s3_bucket_policy" "allow_access_from_another_account" {
   bucket = aws_s3_bucket.example-es.id
   policy = <<EOF
 {
