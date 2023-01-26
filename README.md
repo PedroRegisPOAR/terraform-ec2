@@ -1047,24 +1047,51 @@ nix upgrade-nix
 ```
 
 
-### Other
+### s3 bucket
 
 TODO: 
 nix store ls --store https://cache.nixos.org/ -l /nix/store/0i2jd68mp5g6h2sa5k9c85rb80sn8hi9-hello-2.10/bin/hello
 nix store ls --store https://cache.nixos.org/ --long --recursive "$(nix eval --raw nixpkgs#hello)"
 
+#### Minimal Working Example of s3 bucket
+
 
 ```bash
-AWS_DEFAULT_REGION=eu-west-1 aws s3 ls
+cd bucket-nix-cache-test
+
+test -d .terraform || make init
+
+make apply args='-auto-approve' 
+```
+
+```bash
+# creating an specific file with known content
+echo abc > foo.txt
+
+# using the aws cli to copy the file to the bucket
+aws s3 cp foo.txt s3://playing-bucket-nix-cache-test/
+```
+
+When you access:
+https://playing-bucket-nix-cache-test.s3.amazonaws.com/foo.txt
+
+
+you should see the file contents, `abc` string.
+
+#### nix cache in s3 bucket
+
+
+```bash
+AWS_DEFAULT_REGION=xy-abcd-w aws s3 ls
 ```
 https://github.com/aws/aws-cli/issues/3772#issuecomment-657038848
 
 ```bash
-AWS_DEFAULT_REGION=eu-west-1 aws s3 cp nix-cache-info s3://example-es/
+aws s3 cp nix-cache-info s3://example-es/
 ```
 
 ```bash
-AWS_DEFAULT_REGION=eu-west-1 aws s3 cp s3://example-es/nix-cache-info -
+aws s3 cp s3://example-es/nix-cache-info -
 ```
 Refs.:
 - https://stackoverflow.com/a/28390423
@@ -1074,7 +1101,7 @@ curl -I https://example-es.s3.amazonaws.com/nix-cache-info
 ```
 
 ```bash
-AWS_DEFAULT_REGION=eu-west-1 aws s3 rb s3://example-es --force
+aws s3 rb s3://example-es --force
 ```
 
 ```bash

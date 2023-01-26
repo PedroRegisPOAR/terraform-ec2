@@ -5,7 +5,7 @@ module "bucket-nix-cache-test" {
 
   attach_policy = true
 
-  policy = <<POLICY
+  policy = <<EOF
 {
     "Version": "2012-10-17",
     "Statement": [
@@ -18,5 +18,6 @@ module "bucket-nix-cache-test" {
         }
     ]
 }
-POLICY
+EOF
 }
+
