@@ -5,6 +5,13 @@
 
 If you use `nix-direnv` + `direnv`, just `cd` into the project cloned folder. 
 
+
+This `.pem` is from the AWS site:
+```bash
+nano ~/.ssh/my-ec2.pem
+```
+
+
 ```bash
 nix \
 flake \
@@ -17,16 +24,10 @@ github:PedroRegisPOAR/terraform-ec2/dev \
 Refs.:
 - https://stackoverflow.com/a/53900466
 
-Maybe useful:
-```bash
-nix develop .#
-```
 
 ```bash
-aws configure
-```
+test -d ~/.aws || mkdir -pv ~/.aws
 
-```bash
 cat > ~/.aws/credentials << 'EOF'
 [default]
 aws_access_key_id = YOUR_ACCESS_KEY_ID
@@ -35,12 +36,34 @@ EOF
 
 cat > ~/.aws/config << 'EOF'
 [default]
-region = YOUR_PREFERRED_REGION
+region = us-east-1
 EOF
+
+aws configure list 
+```
+
+
+```bash
+test -d .terraform || make init
+
+make destroy args='-auto-approve' \
+&& make apply args='-auto-approve' \
+&& TERRAFORM_OUTPUT_PUBLIC_IP="$(terraform output ec2_instance_public_ip)" \
+&& while ! nc -t -w 1 -z "${TERRAFORM_OUTPUT_PUBLIC_IP}" 22; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 0.5; done \
+&& ssh \
+    ubuntu@"${TERRAFORM_OUTPUT_PUBLIC_IP}" \
+    -i ~/.ssh/my-ec2.pem \
+    -o StrictHostKeyChecking=no \
+    -o StrictHostKeyChecking=accept-new
+```
+
+Maybe useful:
+```bash
+nix develop .#
 ```
 
 ```bash
-aws configure list 
+aws configure
 ```
 
 ```bash
@@ -58,27 +81,16 @@ describe-images \
 ```
 
 
-TODO: check if it is a must always in the first time.
+It is a must in the first time.
 ```bash
 make init
 ```
 
+If you want to look in what is planned to be done:
 ```bash
 make plan
 ```
 
-
-```bash
-make destroy args='-auto-approve' \
-&& make apply args='-auto-approve' \
-&& TERRAFORM_OUTPUT_PUBLIC_IP="$(terraform output ec2_instance_public_ip)" \
-&& while ! nc -t -w 1 -z "${TERRAFORM_OUTPUT_PUBLIC_IP}" 22; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 0.5; done \
-&& ssh \
-    ubuntu@"${TERRAFORM_OUTPUT_PUBLIC_IP}" \
-    -i ~/.ssh/my-ec2.pem \
-    -o StrictHostKeyChecking=no \
-    -o StrictHostKeyChecking=accept-new
-```
 
 Even after `make destroy args='-auto-approve'` it shows an VPC:
 ```bash
@@ -196,7 +208,7 @@ sudo cp -i /etc/kubernetes/admin.conf "${HOME}"/.kube/config
 sudo chown "$(id -u)":"$(id -g)" "${HOME}"/.kube/config
 ```
 From: 
-- https://youtu.be/TqMKBIinjew?t=782
+- [Instalando Cluster Kubernetes do ZERO](https://youtu.be/TqMKBIinjew?t=782), t=782
 - https://www.weave.works/docs/net/latest/kubernetes/kube-addon/#-installation
 
 
@@ -1069,13 +1081,15 @@ AWS_DEFAULT_REGION=eu-west-1 aws s3 rb s3://example-es --force
 nix copy nixpkgs#hello --to 's3://example-es'
 ```
 
+
+```bash
 nix-store --generate-binary-cache-key example-es cache-priv-key.pem cache-pub-key.pem
 chown $USER cache-priv-key.pem
 chmod 600 cache-priv-key.pem
 cat cache-pub-key.pem
+```
 
-
-
+```bash
 KEY_FILE=cache-priv-key.pem
 CACHE=s3://example-es
 BUILDS=("nixpkgs#hello" "nixpkgs#figlet")
@@ -1085,6 +1099,4 @@ mapfile -t DERIVATIONS < <(echo "${BUILDS[@]}" | xargs nix path-info --derivatio
 mapfile -t DEPENDENCIES < <(echo "${DERIVATIONS[@]}" | xargs nix-store --query --requisites --include-outputs)
 echo "${DEPENDENCIES[@]}" | xargs nix store sign --key-file "${KEY_FILE}" --recursive
 echo "${DEPENDENCIES[@]}" | xargs nix copy --to "${CACHE}"
-
-
-> 
+```
