@@ -3,4 +3,7 @@ module "bucket" {
 
   bucket = local.bucket_name
 
+  block_public_acls   = true
+  block_public_policy = true
+
 }
