@@ -1078,6 +1078,11 @@ https://playing-bucket-nix-cache-test.s3.amazonaws.com/foo.txt
 
 you should see the file contents, `abc` string.
 
+Cleaning:
+```bash
+aws s3 rb s3://playing-bucket-nix-cache-test --force
+```
+
 #### nix cache in s3 bucket
 
 
