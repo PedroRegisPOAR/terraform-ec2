@@ -7,21 +7,14 @@ module "bucket-nix-cache-test" {
 
   policy = <<POLICY
 {
-    "Id": "DirectReads",
     "Version": "2012-10-17",
     "Statement": [
         {
-            "Sid": "AllowDirectReads",
-            "Action": [
-                "s3:GetObject",
-                "s3:GetBucketLocation"
-            ],
+            "Sid": "PublicReadAccess",
             "Effect": "Allow",
-            "Resource": [
-                "arn:aws:s3:::playing-bucket-nix-cache-test",
-                "arn:aws:s3:::playing-bucket-nix-cache-test/*"
-            ],
-            "Principal": "*"
+            "Principal": "*",
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::${local.bucket_name}/*"
         }
     ]
 }
