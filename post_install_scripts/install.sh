@@ -10,8 +10,8 @@
 # it is a must to run as one user different from root user 
 # in this case the ubuntu user it comes from the ami-0ac80df6eff0e70b5
 BASE_URL='https://raw.githubusercontent.com/ES-Nix/get-nix/' \
-&& SHA256=61bc33388f399fd3de71510b5ca20f159c803491 \
-&& NIX_RELEASE_VERSION='nix-2.4pre20210823_af94b54' \
+&& SHA256=45f3508bbadbc40a6e14b861c4ce4628680f1562 \
+&& NIX_RELEASE_VERSION='2.10.2' \
 && su ubuntu -c 'curl -fsSL '"${BASE_URL}""$SHA256"'/get-nix.sh' | su ubuntu -c 'sh -s -- '${NIX_RELEASE_VERSION}
 
 
