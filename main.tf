@@ -16,7 +16,7 @@ resource "aws_s3_bucket" "example-es" {
   force_destroy = true
 }
 
-resource "s3_bucket_policy" "example-es" {
+resource "aws_s3_bucket_policy" "example-es" {
   bucket = "example-es"
   policy = <<EOF
 {
