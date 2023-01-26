@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "bucket-nix-cache-test" {
-  bucket = local.bucket_name
+  bucket = "playing-bucket-nix-cache-test"
   force_destroy = true
 }
 
@@ -18,8 +18,8 @@ resource "aws_s3_bucket_policy" "allow_access_from_another_account" {
             ],
             "Effect": "Allow",
             "Resource": [
-                "arn:aws:s3:::example-es",
-                "arn:aws:s3:::example-es/*"
+                "arn:aws:s3:::playing-bucket-nix-cache-test",
+                "arn:aws:s3:::playing-bucket-nix-cache-test/*"
             ],
             "Principal": "*"
         }
