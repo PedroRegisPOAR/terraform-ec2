@@ -26,6 +26,18 @@ nix develop .#
 aws configure
 ```
 
+```bash
+cat > ~/.aws/credentials << 'EOF'
+[default]
+aws_access_key_id = YOUR_ACCESS_KEY_ID
+aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
+EOF
+
+cat > ~/.aws/config << 'EOF'
+[default]
+region = YOUR_PREFERRED_REGION
+EOF
+```
 
 ```bash
 aws configure list 
@@ -1028,3 +1040,23 @@ nix upgrade-nix
 TODO: 
 nix store ls --store https://cache.nixos.org/ -l /nix/store/0i2jd68mp5g6h2sa5k9c85rb80sn8hi9-hello-2.10/bin/hello
 nix store ls --store https://cache.nixos.org/ --long --recursive "$(nix eval --raw nixpkgs#hello)"
+
+
+nix-store --generate-binary-cache-key example-es cache-priv-key.pem cache-pub-key.pem
+chown $USER cache-priv-key.pem
+chmod 600 cache-priv-key.pem
+cat cache-pub-key.pem
+
+
+
+KEY_FILE=cache-priv-key.pem
+CACHE=cache-priv-key.pem
+BUILDS=("nixpkgs#hello" "nixpkgs#figlet")
+
+echo "${BUILDS[@]}" | xargs nix build
+mapfile -t DERIVATIONS < <(echo "${BUILDS[@]}" | xargs nix path-info --derivation)
+mapfile -t DEPENDENCIES < <(echo "${DERIVATIONS[@]}" | xargs nix-store --query --requisites --include-outputs)
+echo "${DEPENDENCIES[@]}" | xargs nix store sign --key-file "${KEY_FILE}" --recursive
+echo "${DEPENDENCIES[@]}" | xargs nix copy --to "${CACHE}"
+
+
