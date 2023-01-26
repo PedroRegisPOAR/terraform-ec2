@@ -13,14 +13,6 @@ locals {
 
 resource "aws_s3_bucket" "example-es" {
   bucket = "example-es"
-  content_type = "text/html"
-  key          = "nix-cache-info"
-  content      = <<EOF
-StoreDir: /nix/store
-WantMassQuery: 1
-Priority: 10
-EOF
-
   policy = <<EOF
 {
     "Id": "DirectReads",
