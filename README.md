@@ -1042,6 +1042,33 @@ nix store ls --store https://cache.nixos.org/ -l /nix/store/0i2jd68mp5g6h2sa5k9c
 nix store ls --store https://cache.nixos.org/ --long --recursive "$(nix eval --raw nixpkgs#hello)"
 
 
+```bash
+AWS_DEFAULT_REGION=eu-west-1 aws s3 ls
+```
+https://github.com/aws/aws-cli/issues/3772#issuecomment-657038848
+
+```bash
+AWS_DEFAULT_REGION=eu-west-1 aws s3 cp nix-cache-info s3://example-es/
+```
+
+```bash
+AWS_DEFAULT_REGION=eu-west-1 aws s3 cp s3://example-es/nix-cache-info -
+```
+Refs.:
+- https://stackoverflow.com/a/28390423
+
+```bash
+curl -I https://example-es.s3.amazonaws.com/nix-cache-info
+```
+
+```bash
+AWS_DEFAULT_REGION=eu-west-1 aws s3 rb s3://example-es --force
+```
+
+```bash
+nix copy nixpkgs#hello --to 's3://example-es'
+```
+
 nix-store --generate-binary-cache-key example-es cache-priv-key.pem cache-pub-key.pem
 chown $USER cache-priv-key.pem
 chmod 600 cache-priv-key.pem

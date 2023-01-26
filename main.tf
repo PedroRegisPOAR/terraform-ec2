@@ -13,6 +13,11 @@ locals {
 
 resource "aws_s3_bucket" "example-es" {
   bucket = "example-es"
+  force_destroy = true
+}
+
+resource "s3_bucket_policy" "example-es" {
+  bucket = "example-es"
   policy = <<EOF
 {
     "Id": "DirectReads",
@@ -26,8 +31,8 @@ resource "aws_s3_bucket" "example-es" {
             ],
             "Effect": "Allow",
             "Resource": [
-                "arn:aws:s3:::example-nix-cache",
-                "arn:aws:s3:::example-nix-cache/*"
+                "arn:aws:s3:::example-es",
+                "arn:aws:s3:::example-es/*"
             ],
             "Principal": "*"
         }
