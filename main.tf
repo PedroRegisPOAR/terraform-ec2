@@ -16,8 +16,8 @@ resource "aws_s3_bucket" "example-es" {
   force_destroy = true
 }
 
-resource "aws_s3_bucket_policy" "example-es" {
-  bucket = "example-es"
+resource "aws_s3_bucket_policy" "allow_nix_cache" {
+  bucket = aws_s3_bucket.example-es.id
   policy = <<EOF
 {
     "Id": "DirectReads",
@@ -40,6 +40,7 @@ resource "aws_s3_bucket_policy" "example-es" {
 }
 EOF
 }
+
 
 resource "aws_s3_bucket_public_access_block" "example-es" {
   bucket = aws_s3_bucket.example-es.id
