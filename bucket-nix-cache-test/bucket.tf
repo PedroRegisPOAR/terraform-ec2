@@ -1,11 +1,11 @@
-resource "aws_s3_bucket" "bucket-nix-cache-test" {
-  bucket = "playing-bucket-nix-cache-test"
-  force_destroy = true
-}
+module "bucket-nix-cache-test" {
+  source = "terraform-aws-modules/s3-bucket/aws"
 
-resource "aws_s3_bucket_policy" "allow_access_from_another_account" {
-  bucket = aws_s3_bucket.bucket-nix-cache-test.id
-  policy = <<EOF
+  bucket = local.bucket_name
+
+  attach_policy = true
+
+  policy = <<POLICY
 {
     "Id": "DirectReads",
     "Version": "2012-10-17",
@@ -25,13 +25,5 @@ resource "aws_s3_bucket_policy" "allow_access_from_another_account" {
         }
     ]
 }
-EOF
-}
-
-
-resource "aws_s3_bucket_public_access_block" "bucket-nix-cache-test" {
-  bucket = aws_s3_bucket.bucket-nix-cache-test.id
-
-  block_public_acls   = true
-  block_public_policy = true
+POLICY
 }
