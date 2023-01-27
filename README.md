@@ -1092,30 +1092,277 @@ AWS_DEFAULT_REGION=xy-abcd-w aws s3 ls
 https://github.com/aws/aws-cli/issues/3772#issuecomment-657038848
 
 ```bash
-aws s3 cp nix-cache-info s3://example-es/
+aws s3 cp nix-cache-info s3://playing-bucket-nix-cache-test/
 ```
 
 ```bash
-aws s3 cp s3://example-es/nix-cache-info -
+aws s3 cp s3://playing-bucket-nix-cache-test/nix-cache-info -
 ```
 Refs.:
 - https://stackoverflow.com/a/28390423
 
 ```bash
-curl -I https://example-es.s3.amazonaws.com/nix-cache-info
+curl -I https://playing-bucket-nix-cache-test.s3.amazonaws.com/nix-cache-info
 ```
 
 ```bash
-aws s3 rb s3://example-es --force
+aws s3 rb s3://playing-bucket-nix-cache-test --force
 ```
 
 ```bash
-nix copy nixpkgs#hello --to 's3://example-es'
+nix copy nixpkgs#hello --to 's3://playing-bucket-nix-cache-test'
 ```
 
 
 ```bash
-nix-store --generate-binary-cache-key example-es cache-priv-key.pem cache-pub-key.pem
+nix \
+store \
+ls \
+--store s3://playing-bucket-nix-cache-test/ \
+-lR \
+$(nix eval --raw github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello)
+```
+
+
+```bash
+NIXPKGS_ALLOW_INSECURE=1 \
+&& nix \
+shell \
+--impure \
+--expr \
+'(
+  with builtins.getFlake "github:NixOS/nixpkgs/573603b7fdb9feb0eb8efc16ee18a015c667ab1b"; 
+  with legacyPackages.${builtins.currentSystem};
+  (openssl_1_1.overrideAttrs (oldAttrs: rec {
+    src = fetchurl {
+      url = https://www.openssl.org/source/old/1.1.1/openssl-1.1.1l.tar.gz;
+      sha256 = "sha256-C3o+XlnDSCf+DDp0t+yLrvMCuY+oAIjX+RU6oW+na9E=";
+    };
+    configureFlags = (oldAttrs.configureFlags or "") ++ [ "-DOPENSSL_TLS_SECURITY_LEVEL=2" ]; 
+  }))
+)' \
+--command \
+bash \
+-c \
+"
+(openssl version -f | grep -q -e '-DOPENSSL_TLS_SECURITY_LEVEL=2') || echo 'Not found flag -DOPENSSL_TLS_SECURITY_LEVEL=2'
+openssl version -f | sed 's/ / \\ \n/g' | sed -e 1d | (sed -u 1q; sort)
+"
+```
+
+```bash
+nix \
+build \
+--impure \
+--print-build-logs \
+--option substituters 's3://playing-bucket-nix-cache-test/' \
+--expr \
+'(
+  with builtins.getFlake "github:NixOS/nixpkgs/573603b7fdb9feb0eb8efc16ee18a015c667ab1b"; 
+  with legacyPackages.${builtins.currentSystem};
+  (openssl_1_1.overrideAttrs (oldAttrs: rec {
+    src = fetchurl {
+      url = https://www.openssl.org/source/old/1.1.1/openssl-1.1.1l.tar.gz;
+      sha256 = "sha256-C3o+XlnDSCf+DDp0t+yLrvMCuY+oAIjX+RU6oW+na9E=";
+    };
+    configureFlags = (oldAttrs.configureFlags or "") ++ [ "-DOPENSSL_TLS_SECURITY_LEVEL=2" ]; 
+  }))
+)'
+```
+
+
+
+```bash
+nix \
+eval \
+--raw \
+--impure \
+--expr \
+'(
+  with builtins.getFlake "github:NixOS/nixpkgs/573603b7fdb9feb0eb8efc16ee18a015c667ab1b"; 
+  with legacyPackages.${builtins.currentSystem};
+  (openssl_1_1.overrideAttrs (oldAttrs: rec {
+    src = fetchurl {
+      url = https://www.openssl.org/source/old/1.1.1/openssl-1.1.1l.tar.gz;
+      sha256 = "sha256-C3o+XlnDSCf+DDp0t+yLrvMCuY+oAIjX+RU6oW+na9E=";
+    };
+    configureFlags = (oldAttrs.configureFlags or "") ++ [ "-DOPENSSL_TLS_SECURITY_LEVEL=2" ]; 
+  }))
+)'
+```
+
+
+```bash
+nix \
+store \
+ls \
+--store s3://playing-bucket-nix-cache-test/ \
+-lR \
+$(nix \
+eval \
+--raw \
+--impure \
+--expr \
+'(
+  with builtins.getFlake "github:NixOS/nixpkgs/573603b7fdb9feb0eb8efc16ee18a015c667ab1b"; 
+  with legacyPackages.${builtins.currentSystem};
+  (openssl_1_1.overrideAttrs (oldAttrs: rec {
+    src = fetchurl {
+      url = https://www.openssl.org/source/old/1.1.1/openssl-1.1.1l.tar.gz;
+      sha256 = "sha256-C3o+XlnDSCf+DDp0t+yLrvMCuY+oAIjX+RU6oW+na9E=";
+    };
+    configureFlags = (oldAttrs.configureFlags or "") ++ [ "-DOPENSSL_TLS_SECURITY_LEVEL=2" ]; 
+  }))
+)')
+```
+
+
+
+```bash
+nix \
+run \
+--impure \
+--expr \
+'(
+  with builtins.getFlake "github:NixOS/nixpkgs/f0fa012b649a47e408291e96a15672a4fe925d65";
+  with legacyPackages.${builtins.currentSystem};
+  (pkgsStatic.hello.overrideAttrs
+    (oldAttrs: {
+        patchPhase = (oldAttrs.patchPhase or "") + "sed -i \"s/Hello, world!/hello, Nix!/g\" src/hello.c";
+      }
+    )
+  )
+)'
+```
+
+```bash
+cat > flake.nix << 'EOF'
+{
+  description = "A very basic flake";
+
+  outputs = { self, nixpkgs }: {
+
+    packages.x86_64-linux.hello = nixpkgs.legacyPackages.x86_64-linux.hello;
+
+    packages.x86_64-linux.default = self.packages.x86_64-linux.hello;
+
+  };
+}
+EOF
+
+nix \
+flake \
+update \
+--override-input nixpkgs github:NixOS/nixpkgs/e39a949aaa9e4fc652b1619b56e59584e1fc305b
+
+# nix flake lock
+git init && git add .
+
+nix build -L '.#'
+
+nix run '.#'
+```
+
+```bash
+cat > flake.nix << 'EOF'
+{
+  description = "A very basic flake";
+
+  outputs = { self, nixpkgs }: {
+
+    packages.x86_64-linux.hello = let
+        overlay = final: prev: {
+          hello = prev.hello.overrideAttrs (oldAttrs: {
+            patchPhase = (oldAttrs.patchPhase or "") + "sed -i \"s/Hello, world!/hello, Nix!/g\" src/hello.c";
+            # Test fail as the text was changed
+            doCheck = false;
+          });
+        };
+
+        pkgs = import nixpkgs {
+          system = "x86_64-linux";
+          overlays = [ overlay ];
+        };
+      in 
+        pkgs.hello;
+
+    packages.x86_64-linux.default = self.packages.x86_64-linux.hello;
+
+  };
+}
+EOF
+
+nix \
+flake \
+update \
+--override-input nixpkgs github:NixOS/nixpkgs/e39a949aaa9e4fc652b1619b56e59584e1fc305b
+
+# nix flake lock
+git init && git add .
+
+nix build -L '.#'
+
+nix run '.#'
+```
+
+
+
+
+
+##### Signing 
+
+```bash
+aws s3 cp nix-cache-info s3://playing-bucket-nix-cache-test/
+```
+
+On the machine with AWS credentials:
+```bash
+mkdir -p ~/slow-text
+cd ~/slow-text
+
+cat > flake.nix << 'EOF'
+{
+  description = "A very basic flake";
+
+  outputs = { self, nixpkgs }: {
+
+    packages.x86_64-linux.slow-text = let
+        overlay = final: prev: {
+          slow-text = prev.stdenv.mkDerivation {
+            name = "slow-text";
+            buildPhase = "echo started building && sleep 30 && mkdir -pv $out && echo a >> $out/log.txt && sleep 30 && echo b >> $out/log.txt";
+            dontInstall = true;
+            dontUnpack = true;
+          };
+        };
+
+        pkgs = import nixpkgs {
+          system = "x86_64-linux";
+          overlays = [ overlay ];
+        };
+      in 
+        pkgs.slow-text;
+
+    packages.x86_64-linux.default = self.packages.x86_64-linux.slow-text;
+
+  };
+}
+EOF
+
+nix \
+flake \
+update \
+--override-input nixpkgs github:NixOS/nixpkgs/e39a949aaa9e4fc652b1619b56e59584e1fc305b
+
+# nix flake lock
+git init && git add .
+
+time nix build -L '.#'
+
+```
+
+```bash
+nix-store --generate-binary-cache-key playing-bucket-nix-cache-test cache-priv-key.pem cache-pub-key.pem
 chown $USER cache-priv-key.pem
 chmod 600 cache-priv-key.pem
 cat cache-pub-key.pem
@@ -1123,8 +1370,9 @@ cat cache-pub-key.pem
 
 ```bash
 KEY_FILE=cache-priv-key.pem
-CACHE=s3://example-es
-BUILDS=("nixpkgs#hello" "nixpkgs#figlet")
+CACHE=s3://playing-bucket-nix-cache-test
+BUILDS=(".#slow-text")
+# BUILDS=("nixpkgs#hello" "nixpkgs#figlet")
 
 echo "${BUILDS[@]}" | xargs nix build
 mapfile -t DERIVATIONS < <(echo "${BUILDS[@]}" | xargs nix path-info --derivation)
@@ -1132,3 +1380,105 @@ mapfile -t DEPENDENCIES < <(echo "${DERIVATIONS[@]}" | xargs nix-store --query -
 echo "${DEPENDENCIES[@]}" | xargs nix store sign --key-file "${KEY_FILE}" --recursive
 echo "${DEPENDENCIES[@]}" | xargs nix copy --to "${CACHE}"
 ```
+
+
+
+In the "client" machine:
+```bash
+# EXTRA_TRUSTED_PUBLIC_KEYS="$(cat cache-pub-key.pem)"
+CACHE='s3://playing-bucket-nix-cache-test'
+EXTRA_TRUSTED_PUBLIC_KEYS='playing-bucket-nix-cache-test:8Un6HaBmD5I6nwKi6ECDrzBaO55fmAVjEfDAz3HLbIA='
+cat > ~/.config/nix/nix.conf << EOF
+system-features = benchmark big-parallel kvm nixos-test
+experimental-features = nix-command flakes
+show-trace = true
+substituters = https://cache.nixos.org $CACHE
+trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= $EXTRA_TRUSTED_PUBLIC_KEYS
+trusted-users = root $USER
+EOF
+```
+
+
+In the "client" machine:
+```bash
+mkdir -p ~/slow-text
+cd ~/slow-text
+
+cat > flake.nix << 'EOF'
+{
+  description = "A very basic flake";
+
+  outputs = { self, nixpkgs }: {
+
+    packages.x86_64-linux.slow-text = let
+        overlay = final: prev: {
+          slow-text = prev.stdenv.mkDerivation {
+            name = "slow-text";
+            buildPhase = "echo started building && sleep 30 && mkdir -pv $out && echo a >> $out/log.txt && sleep 30 && echo b >> $out/log.txt";
+            dontInstall = true;
+            dontUnpack = true;
+          };
+        };
+
+        pkgs = import nixpkgs {
+          system = "x86_64-linux";
+          overlays = [ overlay ];
+        };
+      in 
+        pkgs.slow-text;
+
+    packages.x86_64-linux.default = self.packages.x86_64-linux.slow-text;
+
+  };
+}
+EOF
+
+nix \
+flake \
+update \
+--override-input nixpkgs github:NixOS/nixpkgs/e39a949aaa9e4fc652b1619b56e59584e1fc305b
+
+# nix flake lock
+git init && git add .
+
+time nix build -L '.#'
+
+```
+
+
+Broken, it is a generic example.
+```bash
+nix \
+build \
+--impure \
+--keep-failed \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--expr \
+'
+  (
+    with builtins.getFlake "github:NixOS/nixpkgs/01c02c84d3f1536c695a2ec3ddb66b8a21be152b"; 
+    with legacyPackages.${builtins.currentSystem}; 
+    stdenv.mkDerivation {
+      name = "ubuntu2204box";
+      src = fetchurl {
+                      url = "https://app.vagrantup.com/generic/boxes/ubuntu2204/versions/4.2.10/providers/libvirt.box";
+                      sha256 = "";
+                    };
+      buildPhase = "mkdir -pv $out/box; cp -R . $out/box";
+      dontInstall = true;
+    }
+  )
+'
+```
+
+
+```bash
+nix path-info --closure-size --eval-store auto --store 'nixpkgs#glibc^*'
+```
+
+```bash
+nix path-info --closure-size --eval-store auto --store s3://playing-bucket-nix-cache-test '.#hello^*'
+```
+
