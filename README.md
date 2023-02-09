@@ -1482,3 +1482,6 @@ nix path-info --closure-size --eval-store auto --store 'nixpkgs#glibc^*'
 nix path-info --closure-size --eval-store auto --store s3://playing-bucket-nix-cache-test '.#hello^*'
 ```
 
+> Ok, these errors disappeared when I changed geographical location of the Hydra HTTP client.
+> https://github.com/input-output-hk/iohk-nix/issues/237#issuecomment-555675836
+
