@@ -39,7 +39,17 @@
 
           shellHook = ''
             export TMPDIR=/tmp
-
+            # export LD_PRELOAD="''${pkgsAllowUnfree.stdenv.cc.cc.lib}/lib":$LD_PRELOAD
+            # export LD_LIBRARY_PATH="$(nix build --print-out-paths nixpkgs#stdenv.cc.cc.lib)/lib"
+            export LD_LIBRARY_PATH="$(nix build --print-out-paths nixpkgs#glibc)/lib"
+#            export LD_LIBRARY_PATH="''${
+#              pkgsAllowUnfree.lib.makeLibraryPath
+#                (
+#                  with pkgsAllowUnfree.pythonManylinuxPackages; [
+#                      manylinux1Package manylinux2010Package manylinux2014Package
+#                    ]
+#                )
+#              }":$LD_LIBRARY_PATH
           '';
         };
       });

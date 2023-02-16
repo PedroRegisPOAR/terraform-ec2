@@ -2,3 +2,5 @@
 .terraform/
 .direnv/
 result
+result-bin
+result-lib

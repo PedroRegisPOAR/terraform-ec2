@@ -39,7 +39,10 @@ cat > ~/.aws/config << 'EOF'
 region = us-east-1
 EOF
 
-aws configure list 
+aws configure list
+
+aws sts get-caller-identity
+aws sts get-caller-identity --profile=default
 ```
 
 
