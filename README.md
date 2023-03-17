@@ -1062,9 +1062,11 @@ nix store ls --store https://cache.nixos.org/ --long --recursive "$(nix eval --r
 ```bash
 cd bucket-nix-cache-test
 
-test -d .terraform || make init
+terraform init
 
-make apply args='-auto-approve' 
+terraform apply -auto-approve
+
+# terraform destroy -auto-approve
 ```
 
 ```bash
@@ -1113,7 +1115,7 @@ aws s3 rb s3://playing-bucket-nix-cache-test --force
 ```
 
 ```bash
-nix copy nixpkgs#hello --to 's3://playing-bucket-nix-cache-test'
+nix copy github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello --to 's3://playing-bucket-nix-cache-test'
 ```
 
 
@@ -1314,8 +1316,18 @@ nix run '.#'
 
 ##### Signing 
 
+
 ```bash
 aws s3 cp nix-cache-info s3://playing-bucket-nix-cache-test/
+```
+
+This is supposed to be done only once:
+```bash
+nix-store --generate-binary-cache-key playing-bucket-nix-cache-test cache-priv-key.pem cache-pub-key.pem
+
+chown $USER cache-priv-key.pem \
+&& chmod 600 cache-priv-key.pem
+cat cache-pub-key.pem
 ```
 
 On the machine with AWS credentials:
@@ -1333,7 +1345,7 @@ cat > flake.nix << 'EOF'
         overlay = final: prev: {
           slow-text = prev.stdenv.mkDerivation {
             name = "slow-text";
-            buildPhase = "echo started building && sleep 30 && mkdir -pv $out && echo a >> $out/log.txt && sleep 30 && echo b >> $out/log.txt";
+            buildPhase = "echo started building && sleep 30 && mkdir -pv $out && echo 18de53ca965bd0678aaf09e5ce0daae05c58355a >> $out/log.txt && sleep 30 && echo a55385c50eaad0ec5e90faa8760db569ac35ed81 >> $out/log.txt";
             dontInstall = true;
             dontUnpack = true;
           };
@@ -1364,12 +1376,6 @@ time nix build -L '.#'
 
 ```
 
-```bash
-nix-store --generate-binary-cache-key playing-bucket-nix-cache-test cache-priv-key.pem cache-pub-key.pem
-chown $USER cache-priv-key.pem
-chmod 600 cache-priv-key.pem
-cat cache-pub-key.pem
-```
 
 ```bash
 KEY_FILE=cache-priv-key.pem
@@ -1488,3 +1494,195 @@ nix path-info --closure-size --eval-store auto --store s3://playing-bucket-nix-c
 > Ok, these errors disappeared when I changed geographical location of the Hydra HTTP client.
 > https://github.com/input-output-hk/iohk-nix/issues/237#issuecomment-555675836
 
+
+
+
+### WIP, examples
+
+
+```bash
+mkdir -pv ~/.ssh \
+&& chmod 0700 -v ~/.ssh \
+&& touch ~/.ssh/config \
+&& chmod 600 -v ~/.ssh/config
+```
+
+```bash
+echo '127.0 0.1   binarycache' | sudo tee -a /etc/hosts
+```
+
+
+In the client:
+```bash
+ssh nixuser@localhost -p 2221
+```
+
+```bash
+tee ~/.ssh/config <<EOF
+Host builder
+    HostName localhost
+    User nixuser
+    Port 2221
+    PubkeyAcceptedKeyTypes ssh-ed25519
+    IdentitiesOnly yes
+    IdentityFile ~/.ssh/id_ed25519
+    LogLevel INFO
+EOF
+```
+
+It must work:
+```bash
+ssh builder
+```
+
+
+```bash
+nix store ping --store ssh://builder
+```
+
+
+```bash
+nix store ping --store ssh-ng://builder
+```
+
+
+TODO: test
+```bash
+nix \
+build \
+--max-jobs 0 \
+--builders "ssh://builder x86_64-linux - 100 1 big-parallel,benchmark" \
+nixpkgs#pkgsStatic.python3
+```
+
+```bash
+nix build --max-jobs 0 --eval-store auto --store ssh-ng://builder nixpkgs#pkgsStatic.python3
+```
+
+```bash
+nix \
+build \
+--max-jobs 0 \
+--eval-store auto \
+--store ssh-ng://builder \
+--impure \
+--expr \
+'(
+  with builtins.getFlake "github:NixOS/nixpkgs/f0fa012b649a47e408291e96a15672a4fe925d65";
+  with legacyPackages.${builtins.currentSystem};
+  (pkgsStatic.hello.overrideAttrs
+    (oldAttrs: {
+        patchPhase = (oldAttrs.patchPhase or "") + "sed -i \"s/Hello, world!/hello, Nix!/g\" src/hello.c";
+      }
+    )
+  )
+)'
+```
+
+```bash
+mkdir -pv sandbox/sandbox \
+&& cd sandbox/sandbox
+```
+
+
+```bash
+nix \
+build \
+--eval-store auto \
+--store ssh-ng://builder \
+--impure \
+--expr \
+'
+  (
+    (
+      (
+        builtins.getFlake "github:NixOS/nixpkgs/4b4f4bf2845c6e2cc21cd30f2e297908c67d8611"
+      ).lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [ 
+                      "${toString (builtins.getFlake "github:NixOS/nixpkgs/4b4f4bf2845c6e2cc21cd30f2e297908c67d8611")}/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"
+                      { 
+                        # https://nixos.wiki/wiki/Creating_a_NixOS_live_CD#Building_faster
+                        isoImage.squashfsCompression = "gzip -Xcompression-level 1";
+                      }
+                    ];
+      }
+    ).config.system.build.isoImage
+  )
+'
+```
+
+
+```bash
+nix \
+copy \
+--no-check-sigs \
+--from ssh-ng://builder \
+/nix/store/7l35kkayn7a52yqgxzcmjvvg0xnslgrc-nixos-21.11.20210618.4b4f4bf-x86_64-linux.iso.drv
+```
+Refs.:
+- https://github.com/NixOS/nix/issues/4894#issuecomment-1252510474
+
+
+
+#### amazonImage
+
+
+```bash
+{ pkgs, ... }:
+
+{
+  imports = [ <nixpkgs/nixos/modules/virtualisation/amazon-image.nix> ];
+  ec2.hvm = true;
+  environment.systemPackages = with pkgs; [ git ];
+}
+```
+
+```bash
+nix \
+run \
+github:nix-community/nixos-generators \
+-- \
+--format amazon \
+-c ./configuration.nix
+```
+
+
+```bash
+nix \
+build \
+--eval-store auto \
+--store ssh-ng://builder \
+--impure \
+--expr \
+'
+  (
+    (
+      (
+        builtins.getFlake "github:NixOS/nixpkgs/4b4f4bf2845c6e2cc21cd30f2e297908c67d8611"
+      ).lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [ 
+                      "${toString (builtins.getFlake "github:NixOS/nixpkgs/4b4f4bf2845c6e2cc21cd30f2e297908c67d8611")}/nixos/modules/virtualisation/amazon-image.nix"
+                    ];
+      }
+    ).config.system.build.amazonImage
+  )
+'
+```
+
+
+
+```bash
+nix-build \
+'<nixpkgs/nixos/release.nix>' \
+-A amazonImage.x86_64-linux \
+--arg configuration ./configuration.nix
+```
+
+```bash
+nix-build \
+'<nixpkgs/nixos/release.nix>' \
+-A amazonImage.x86_64-linux \
+--arg configuration ./configuration.nix
+```

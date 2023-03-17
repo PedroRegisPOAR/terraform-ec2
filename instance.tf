@@ -37,10 +37,14 @@ module "ec2_cluster" {
   # 20.04
   # ami                    = "ami-0c4f7023847b90238"
 
-  # NixOS AMI, is working
+  # NixOS AMI, is working, and with nix 2.11
+  # https://github.com/NixOS/nixpkgs/issues/112354#issuecomment-777813593
+  # https://nixos.org/download.html#nixos-virtualbox
+  #
+  # Old
+  # ami                    = "ami-0508167db03652cc4"
   # https://github.com/NixOS/nixpkgs/blob/0be721b12930887fd883260ddb29c80225eaa9f3/nixos/modules/virtualisation/amazon-ec2-amis.nix#L411
   # ami                    = "ami-099756bfda4540da0"
-  # ami                    = "ami-0d937fc7bf7b8c2ed"
 
   # 18.04
   # ami                    = "ami-0ac80df6eff0e70b5"
