@@ -1389,6 +1389,8 @@ mapfile -t DEPENDENCIES < <(echo "${DERIVATIONS[@]}" | xargs nix-store --query -
 echo "${DEPENDENCIES[@]}" | xargs nix store sign --key-file "${KEY_FILE}" --recursive
 echo "${DEPENDENCIES[@]}" | xargs nix copy --to "${CACHE}"
 ```
+Refs.:
+- [How to correctly cache build-time dependencies using Nix ](https://www.haskellforall.com/2022/10/how-to-correctly-cache-build-time.html)
 
 
 
@@ -1500,6 +1502,12 @@ nix path-info --closure-size --eval-store auto --store s3://playing-bucket-nix-c
 ### WIP, examples
 
 
+
+In the client:
+```bash
+ssh nixuser@localhost -p 2221
+```
+
 ```bash
 mkdir -pv ~/.ssh \
 && chmod 0700 -v ~/.ssh \
@@ -1507,15 +1515,6 @@ mkdir -pv ~/.ssh \
 && chmod 600 -v ~/.ssh/config
 ```
 
-```bash
-echo '127.0 0.1   binarycache' | sudo tee -a /etc/hosts
-```
-
-
-In the client:
-```bash
-ssh nixuser@localhost -p 2221
-```
 
 ```bash
 tee ~/.ssh/config <<EOF
@@ -1560,23 +1559,28 @@ nix build --max-jobs 0 --eval-store auto --store ssh-ng://builder nixpkgs#pkgsSt
 ```
 
 ```bash
+EXPR_NIX='
+  (
+    with builtins.getFlake "github:NixOS/nixpkgs/f0fa012b649a47e408291e96a15672a4fe925d65";
+    with legacyPackages.${builtins.currentSystem};
+    (pkgsStatic.hello.overrideAttrs
+      (oldAttrs: {
+          patchPhase = (oldAttrs.patchPhase or "") + "sed -i \"s/Hello, world!/hello, Nix!/g\" src/hello.c";
+        }
+      )
+    )
+  )
+'
+
 nix \
 build \
+--print-out-paths \
 --max-jobs 0 \
 --eval-store auto \
 --store ssh-ng://builder \
 --impure \
 --expr \
-'(
-  with builtins.getFlake "github:NixOS/nixpkgs/f0fa012b649a47e408291e96a15672a4fe925d65";
-  with legacyPackages.${builtins.currentSystem};
-  (pkgsStatic.hello.overrideAttrs
-    (oldAttrs: {
-        patchPhase = (oldAttrs.patchPhase or "") + "sed -i \"s/Hello, world!/hello, Nix!/g\" src/hello.c";
-      }
-    )
-  )
-)'
+$EXPR_NIX
 ```
 
 ```bash
@@ -1616,6 +1620,13 @@ build \
 ```bash
 nix \
 copy \
+--from ssh-ng://builder \
+/nix/store/brdqd7bpp67nyqfacza7ffzwjfp37zrg-hello-static-x86_64-unknown-linux-musl-2.12.drv
+```
+
+```bash
+nix \
+copy \
 --no-check-sigs \
 --from ssh-ng://builder \
 /nix/store/7l35kkayn7a52yqgxzcmjvvg0xnslgrc-nixos-21.11.20210618.4b4f4bf-x86_64-linux.iso.drv
@@ -1624,6 +1635,120 @@ Refs.:
 - https://github.com/NixOS/nix/issues/4894#issuecomment-1252510474
 
 
+### --post-build-hook
+
+
+```bash
+tee custom-build-hook.sh <<EOF
+#!/usr/bin/env bash
+
+set -euf 
+
+echo "post-build-hook"
+echo "-- ${OUT_PATHS} --"
+echo "^^ ${DRV_PATH} ^^"
+EOF
+
+chmod -v 0755 custom-build-hook.sh
+
+./custom-build-hook.sh
+```
+
+```bash
+nix build --rebuild -L nixpkgs#hello --post-build-hook ./custom-build-hook.sh
+```
+
+```bash
+nix build --rebuild nixpkgs#hello --post-build-hook ./custom-build-hook.sh
+```
+
+
+```bash
+nix build --rebuild -L nixpkgs#python3 --post-build-hook ./custom-build-hook.sh
+```
+
+```bash
+time nix build --rebuild nixpkgs#ffmpeg
+```
+
+
+```bash
+SCRIPT_NAME='build-hook-sign.sh'
+
+tee "$SCRIPT_NAME" <<EOF
+#!/usr/bin/env bash
+
+set -euf 
+
+KEY_FILE=cache-priv-key.pem
+# CACHE=s3://playing-bucket-nix-cache-test
+BUILDS=("nixpkgs#hello" "nixpkgs#figlet")
+
+echo "post-build-hook"
+echo "-- ${OUT_PATHS} --"
+echo "^^ ${DRV_PATH} ^^"
+
+
+echo "${BUILDS[@]}" | xargs nix build
+mapfile -t DERIVATIONS < <(echo "${BUILDS[@]}" | xargs nix path-info --derivation)
+mapfile -t DEPENDENCIES < <(echo "${DERIVATIONS[@]}" | xargs nix-store --query --requisites --include-outputs)
+echo "${DEPENDENCIES[@]}" | xargs nix store sign --key-file "${KEY_FILE}" --recursive
+# echo "${DEPENDENCIES[@]}" | xargs nix copy --to "${CACHE}"
+
+EOF
+
+chmod -v 0755 "$SCRIPT_NAME"
+
+./"$SCRIPT_NAME"
+```
+Refs.:
+- [How to correctly cache build-time dependencies using Nix ](https://www.haskellforall.com/2022/10/how-to-correctly-cache-build-time.html)
+
+```bash
+nix build --substituters '' nixpkgs#hello
+```
+https://discourse.nixos.org/t/nix-store-copy-vs-sigs/20366/3
+
+
+```bash
+nix store verify --recursive --sigs-needed 1 --all
+```
+
+```bash
+# Why sudo?
+sudo nix store copy-sigs --all --substituter https://cache.nixos.org/
+```
+
+```bash
+cat /etc/nix/public-key
+```
+
+```bash
+sudo cat /etc/nix/private-key
+```
+
+
+
+```bash
+nix store verify --recursive --sigs-needed 1 $(nix path-info nixpkgs#figlet)
+
+
+nix store verify --recursive --sigs-needed 2 $(nix path-info nixpkgs#figlet)
+```
+
+```bash
+nix store verify --recursive --sigs-needed 1 \
+$(dirname $(dirname $(readlink -f $(which figlet))))
+```
+
+```bash
+nix build -L --rebuild nixpkgs#hello
+```
+
+
+```bash
+nix store verify --recursive --sigs-needed 1 /nix/store/v02pl5dhayp8jnz8ahdvg5vi71s8xc6g-hello-2.12.1
+```
 
 #### amazonImage
 
