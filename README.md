@@ -1536,6 +1536,13 @@ ssh builder
 
 
 ```bash
+ssh builder nix-store --version
+```
+Refs.:
+- https://nixos.wiki/wiki/Distributed_build#Prerequisites
+
+
+```bash
 nix store ping --store ssh://builder
 ```
 
@@ -1635,6 +1642,19 @@ Refs.:
 - https://github.com/NixOS/nix/issues/4894#issuecomment-1252510474
 
 
+
+> The previous point does not retroactively sign existing paths in the store of the builder. To do so, run 
+
+Refs.:
+- https://nixos.wiki/wiki/Distributed_build#Prerequisites
+
+```bash
+# sudo nix sign-paths --all --key-file /etc/nix/private-key
+
+sudo nix store sign --all --key-file /etc/nix/private-key
+```
+
+
 ### --post-build-hook
 
 
@@ -1705,14 +1725,38 @@ Refs.:
 - [How to correctly cache build-time dependencies using Nix ](https://www.haskellforall.com/2022/10/how-to-correctly-cache-build-time.html)
 
 ```bash
+nix \
+build \
+--print-build-logs \
+--print-out-paths \
+--max-jobs 0 \
+--eval-store auto \
+--store ssh-ng://builder \
+nixpkgs#hello \
+--post-build-hook ./custom-build-hook.sh
+```
+
+```bash
+nix build --print-build-logs nixpkgs#hello --post-build-hook ./custom-build-hook.sh
+```
+
+```bash
 nix build --substituters '' nixpkgs#hello
 ```
 https://discourse.nixos.org/t/nix-store-copy-vs-sigs/20366/3
 
 
 ```bash
-nix store verify --recursive --sigs-needed 1 --all
+nix path-info --sigs --recursive /nix/store/v02pl5dhayp8jnz8ahdvg5vi71s8xc6g-hello-2.12.1
 ```
+
+
+```bash
+nix store verify --recursive --sigs-needed 1 "$(readlink -f result)"
+```
+
+
+
 
 ```bash
 # Why sudo?
@@ -1727,7 +1771,11 @@ cat /etc/nix/public-key
 sudo cat /etc/nix/private-key
 ```
 
-
+```bash
+nix \
+--option extra-trusted-public-keys  \
+store verify --recursive --sigs-needed 2 $(nix build --print-out-paths --no-link nixpkgs#hello)
+```
 
 ```bash
 nix store verify --recursive --sigs-needed 1 $(nix path-info nixpkgs#figlet)
@@ -1750,7 +1798,7 @@ nix build -L --rebuild nixpkgs#hello
 nix store verify --recursive --sigs-needed 1 /nix/store/v02pl5dhayp8jnz8ahdvg5vi71s8xc6g-hello-2.12.1
 ```
 
-#### amazonImage
+#### amazonImage, WIP
 
 
 ```bash
@@ -1811,3 +1859,213 @@ nix-build \
 -A amazonImage.x86_64-linux \
 --arg configuration ./configuration.nix
 ```
+
+
+#### FAQ
+
+
+> Cache size is around 220TB. No plans to change retention, afaik.
+Refs.: https://discourse.nixos.org/t/how-long-is-binary-cache-kept-on-cache-nixos-org/11210/6
+
+
+https://cache.nixos.org/
+
+```nix
+ # Legacy configuration conversion.
+ nix.settings = mkMerge [
+   {
+     trusted-public-keys = [ "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" ];
+   }
+ ];
+```
+Refs.:
+- https://github.com/NixOS/nixpkgs/blob/eac7da7b519a5aefe92c33c90b4450a24ebe0ab3/nixos/modules/services/misc/nix-daemon.nix#L821-L824
+- https://discourse.nixos.org/t/what-is-the-public-key-of-cache-nixos-org/19799/2
+
+
+### Multi singing
+
+
+```bash
+nix path-info --sigs $(nix build --print-out-paths --no-link nixpkgs#hello)
+```
+
+
+>  /* Whether the path is ultimately trusted, that is, it's a
+>    derivation output that was built locally. */
+> bool ultimate = false;
+
+Refs.: 
+- https://github.com/NixOS/nix/blob/1de5b0e4e64cb1062965c73d3037fc798cd018bb/src/libstore/path-info.hh#L39-L41
+- https://discourse.nixos.org/t/how-do-i-query-the-nix-store-for-all-packages-i-have-built-myself/19047/6
+
+
+
+On the builder machine:
+
+```bash
+mkdir -pv ~/play-with-singing \
+&& cd ~/play-with-singing
+```
+
+
+```bash
+BINARY_CACHE_NAME=binarycache-11
+PRIVATE_KEY_NAME=binarycache-priv-key-1.pem
+PUBLIC_KEY_NAME=binarycache-pub-key-1.pem
+
+
+nix-store --generate-binary-cache-key "$BINARY_CACHE_NAME" "$PRIVATE_KEY_NAME" "$PUBLIC_KEY_NAME"
+
+chown -v "$USER" "$PRIVATE_KEY_NAME" \
+&& chmod -v 0600 "$PRIVATE_KEY_NAME"
+cat "$PUBLIC_KEY_NAME"
+
+
+# The seconde pair
+BINARY_CACHE_NAME=binarycache-12
+PRIVATE_KEY_NAME=binarycache-priv-key-2.pem
+PUBLIC_KEY_NAME=binarycache-pub-key-2.pem
+
+
+nix-store --generate-binary-cache-key "$BINARY_CACHE_NAME" "$PRIVATE_KEY_NAME" "$PUBLIC_KEY_NAME"
+
+chown -v "$USER" "$PRIVATE_KEY_NAME" \
+&& chmod -v 0600 "$PRIVATE_KEY_NAME"
+cat "$PUBLIC_KEY_NAME"
+```
+
+
+```bash
+nix path-info --sigs $(nix build --print-out-paths --no-link nixpkgs#hello)
+```
+
+
+```bash
+sudo nix store sign --key-file binarycache-priv-key-1.pem --recursive $(nix build --print-out-paths --no-link nixpkgs#hello)
+```
+
+```bash
+nix path-info --sigs $(nix build --print-out-paths --no-link nixpkgs#hello)
+```
+
+```bash
+nix store verify --recursive --sigs-needed 1 $(nix build --print-out-paths --no-link nixpkgs#hello)
+```
+
+```bash
+nix \
+--option extra-trusted-public-keys "$(cat binarycache-pub-key-1.pem)" \
+store verify --recursive --sigs-needed 2 $(nix build --print-out-paths --no-link nixpkgs#hello)
+```
+
+```bash
+sudo nix store sign --key-file binarycache-priv-key-2.pem --recursive $(nix build --print-out-paths --no-link nixpkgs#hello)
+```
+
+```bash
+nix \
+--option extra-trusted-public-keys "$(cat binarycache-pub-key-1.pem) $(cat binarycache-pub-key-2.pem)" \
+store verify --recursive --sigs-needed 3 $(nix build --print-out-paths --no-link nixpkgs#hello)
+```
+
+
+
+#### Using the `--rebuild` flag
+
+
+```bash
+nix path-info --sigs $(nix build --print-out-paths --no-link --rebuild nixpkgs#hello)
+```
+
+```bash
+nix store verify --recursive --sigs-needed 1 $(nix build --print-out-paths --no-link --rebuild nixpkgs#hello)
+```
+
+```bash
+nix path-info --sigs $(nix build --print-out-paths --no-link nixpkgs#hello)
+```
+Refs.: 
+- https://github.com/NixOS/nix/blob/1de5b0e4e64cb1062965c73d3037fc798cd018bb/src/libstore/path-info.hh#L39-L41
+- https://discourse.nixos.org/t/how-do-i-query-the-nix-store-for-all-packages-i-have-built-myself/19047/6
+
+```bash
+sudo nix store sign --key-file binarycache-priv-key-1.pem --recursive $(nix build --print-out-paths --no-link --rebuild nixpkgs#hello)
+```
+
+```bash
+nix path-info --sigs $(nix build --print-out-paths --no-link --rebuild nixpkgs#hello)
+```
+
+```bash
+nix \
+--option extra-trusted-public-keys "$(cat binarycache-pub-key-1.pem)" \
+store verify --recursive --sigs-needed 2 $(nix build --print-out-paths --no-link nixpkgs#hello)
+```
+
+```bash
+sudo nix store sign --key-file binarycache-priv-key-2.pem --recursive $(nix build --print-out-paths --no-link --rebuild nixpkgs#hello)
+```
+
+```bash
+nix path-info --sigs $(nix build --print-out-paths --no-link --rebuild nixpkgs#hello)
+```
+
+```bash
+nix \
+--option extra-trusted-public-keys "$(cat binarycache-pub-key-1.pem) $(cat binarycache-pub-key-2.pem)" \
+store verify --recursive --sigs-needed 3 $(nix build --print-out-paths --no-link nixpkgs#hello)
+```
+
+
+
+#### Inspecting sqlite
+
+
+```bash
+nix path-info --sigs $(readlink -f result)
+```
+Refs.:
+- https://github.com/NixOS/nix/issues/4258
+
+
+```bash
+sqlite3 ~/.cache/nix/binary-cache-v6.sqlite
+```
+Refs.:
+- https://github.com/NixOS/nix/issues/4258
+
+
+```bash
+.fullschema
+
+# sqlite3 ~/.cache/nix/binary-cache-v6.sqlite <<< '.fullschema'
+```
+Refs.:
+- https://stackoverflow.com/a/25734826
+
+
+```bash
+select * from nars where hashPart='ab5pw1y75x4ndjd3dkxbcjkwjc3vp13s';
+```
+Refs.:
+- https://github.com/NixOS/nix/issues/4258
+
+
+
+```bash
+sudo sqlite3 /root/.cache/nix/binary-cache-v6.sqlite
+```
+Refs.:
+- https://github.com/NixOS/nix/issues/4258
+
+
+
+```bash
+nix path-info --sigs $(readlink -f result)
+```
+
+
+
+
+
