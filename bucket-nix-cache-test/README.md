@@ -1,4 +1,17 @@
 
+## In the first time
+
+Configuring the aws CLI:
+```bash
+test -d ~/.aws || mkdir -pv ~/.aws
+
+cat > ~/.aws/credentials << 'EOF'
+[default]
+aws_access_key_id = YOUR_ACCESS_KEY_ID
+aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
+EOF
+```
+
 
 ### s3 bucket
 
