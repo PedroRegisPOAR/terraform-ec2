@@ -1288,7 +1288,7 @@ cat > flake.nix << 'EOF'
           system = "x86_64-linux";
           overlays = [ overlay ];
         };
-      in 
+      in
         pkgs.hello;
 
     packages.x86_64-linux.default = self.packages.x86_64-linux.hello;
@@ -1355,7 +1355,7 @@ cat > flake.nix << 'EOF'
           system = "x86_64-linux";
           overlays = [ overlay ];
         };
-      in 
+      in
         pkgs.slow-text;
 
     packages.x86_64-linux.default = self.packages.x86_64-linux.slow-text;
@@ -1552,6 +1552,124 @@ nix store ping --store ssh-ng://builder
 ```
 
 
+In the "client" machine:
+```bash
+mkdir -p slow-text
+cd slow-text
+
+cat > flake.nix << 'EOF'
+{
+  description = "A very basic flake";
+
+  outputs = { self, nixpkgs }: {
+
+    packages.x86_64-linux.slow-text = let
+        overlay = final: prev: {
+          slow-text = prev.stdenv.mkDerivation {
+            name = "slow-text";
+            buildPhase = "echo started building && sleep 30 && mkdir -pv $out && echo a >> $out/log.txt && sleep 30 && echo b >> $out/log.txt";
+            dontInstall = true;
+            dontUnpack = true;
+          };
+        };
+
+        pkgs = import nixpkgs {
+          system = "x86_64-linux";
+          overlays = [ overlay ];
+        };
+      in 
+        pkgs.slow-text;
+
+    packages.x86_64-linux.default = self.packages.x86_64-linux.slow-text;
+
+  };
+}
+EOF
+
+nix \
+flake \
+update \
+--override-input nixpkgs github:NixOS/nixpkgs/8bc6945b1224a1cfa679d6801580b1054dba1a5c
+
+# nix flake lock
+git init && git add .
+
+time \
+nix \
+build \
+--print-build-logs \
+--print-out-paths \
+--max-jobs 0 \
+--eval-store auto \
+--store ssh-ng://builder \
+'.#'
+
+
+# If the build is broken it does not work?
+nix \
+log \
+--max-jobs 0 \
+--eval-store auto \
+--store ssh-ng://builder \
+'.#'
+
+```
+
+In the builder machine:
+```bash
+nix \
+--option extra-trusted-public-keys "$(cat /etc/nix/public-key)" \
+path-info \
+--sigs \
+--recursive \
+/nix/store/2xw250v6l8416spl3w18am42xs0mnx6x-slow-text
+```
+
+```bash
+nix \
+--option extra-trusted-public-keys "$(cat /etc/nix/public-key)" \
+store \
+verify \
+--recursive \
+--sigs-needed 2 \
+/nix/store/2xw250v6l8416spl3w18am42xs0mnx6x-slow-text
+```
+
+
+```bash
+nix \
+--option extra-trusted-public-keys binarycache-1:MTfGu7Yy/XvFDqUm5yK0DETkLV0slNILWPAxqCly+9c= \
+copy \
+--from ssh-ng://builder \
+$(
+   nix \
+   eval \
+   --raw \
+   --eval-store auto \
+   --store ssh-ng://builder \
+   '.#'
+)
+```
+
+
+```bash
+nix \
+--option extra-trusted-public-keys binarycache-1:MTfGu7Yy/XvFDqUm5yK0DETkLV0slNILWPAxqCly+9c= \
+store \
+verify \
+--recursive \
+--sigs-needed 1 \
+$(
+   nix \
+   eval \
+   --raw \
+   --eval-store auto \
+   --store ssh-ng://builder \
+   '.#'
+)
+```
+
+
 TODO: test
 ```bash
 nix \
@@ -1568,11 +1686,12 @@ nix build --max-jobs 0 --eval-store auto --store ssh-ng://builder nixpkgs#pkgsSt
 ```bash
 EXPR_NIX='
   (
-    with builtins.getFlake "github:NixOS/nixpkgs/f0fa012b649a47e408291e96a15672a4fe925d65";
+    with builtins.getFlake "github:NixOS/nixpkgs/8bc6945b1224a1cfa679d6801580b1054dba1a5c";
     with legacyPackages.${builtins.currentSystem};
     (pkgsStatic.hello.overrideAttrs
       (oldAttrs: {
           patchPhase = (oldAttrs.patchPhase or "") + "sed -i \"s/Hello, world!/hello, Nix!/g\" src/hello.c";
+          dontCheck = true;
         }
       )
     )
@@ -2027,6 +2146,14 @@ nix path-info --sigs $(readlink -f result)
 ```
 Refs.:
 - https://github.com/NixOS/nix/issues/4258
+
+
+```bash
+nix run nixpkgs#sqlite -- ~/.cache/nix/binary-cache-v6.sqlite 'pragma integrity_check'
+```
+Refs.:
+- https://github.com/NixOS/nix/issues/3545#issuecomment-621107449
+
 
 
 ```bash
