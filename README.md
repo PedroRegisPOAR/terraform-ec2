@@ -38,7 +38,10 @@ cat > ~/.aws/config << 'EOF'
 [default]
 region = us-east-1
 EOF
+```
 
+
+```bash
 aws configure list
 
 aws sts get-caller-identity
