@@ -2,9 +2,7 @@
 
 ### s3 bucket
 
-TODO: 
-nix store ls --store https://cache.nixos.org/ -l /nix/store/0i2jd68mp5g6h2sa5k9c85rb80sn8hi9-hello-2.10/bin/hello
-nix store ls --store https://cache.nixos.org/ --long --recursive "$(nix eval --raw nixpkgs#hello)"
+
 
 #### Minimal Working Example of s3 bucket
 
@@ -12,13 +10,23 @@ nix store ls --store https://cache.nixos.org/ --long --recursive "$(nix eval --r
 ```bash
 cd bucket-nix-cache-test
 
-terraform init
+test -d .terraform || make init
 
 terraform apply -auto-approve
 
 # terraform destroy -auto-approve
 ```
 
+
+Testing it via CLI using `curl`:
+```bash
+curl -I https://playing-bucket-nix-cache-test.s3.amazonaws.com
+```
+
+Or just access the url: https://playing-bucket-nix-cache-test.s3.amazonaws.com
+
+
+Sending some local file named `foo.txt` and with `abc` as the content:
 ```bash
 # creating an specific file with known content
 echo abc > foo.txt
@@ -27,29 +35,45 @@ echo abc > foo.txt
 aws s3 cp foo.txt s3://playing-bucket-nix-cache-test/
 ```
 
-When you access:
+When you access, using some browser:
 https://playing-bucket-nix-cache-test.s3.amazonaws.com/foo.txt
-
 
 you should see the file contents, `abc` string.
 
-Cleaning:
+Testing it via CLI using `aws`:
+```bash
+aws s3 cp s3://playing-bucket-nix-cache-test/foo.txt -
+```
+
+
+Testing it via CLI using `curl`:
+```bash
+curl https://playing-bucket-nix-cache-test.s3.amazonaws.com/foo.txt
+```
+
+
+WARNING: be carefull. Removing the bucket:
 ```bash
 aws s3 rb s3://playing-bucket-nix-cache-test --force
 ```
 
+So this is going to be empty:
+```bash
+aws s3 ls
+```
+
+TODO: how to remove only some files in the s3 bucket?
+
+
 #### nix cache in s3 bucket
 
 
-```bash
-AWS_DEFAULT_REGION=xy-abcd-w aws s3 ls
-```
-https://github.com/aws/aws-cli/issues/3772#issuecomment-657038848
 
 ```bash
 aws s3 cp nix-cache-info s3://playing-bucket-nix-cache-test/
 ```
 
+How to print all the s3 bucket contents:
 ```bash
 aws s3 cp s3://playing-bucket-nix-cache-test/nix-cache-info -
 ```
@@ -60,12 +84,15 @@ Refs.:
 curl -I https://playing-bucket-nix-cache-test.s3.amazonaws.com/nix-cache-info
 ```
 
-```bash
-aws s3 rb s3://playing-bucket-nix-cache-test --force
-```
+
+#### Sending GNU hello to a custom s3 binary cache
+
 
 ```bash
-nix copy github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello --to 's3://playing-bucket-nix-cache-test'
+nix \
+copy \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello \
+--to 's3://playing-bucket-nix-cache-test'
 ```
 
 
@@ -74,7 +101,8 @@ nix \
 store \
 ls \
 --store s3://playing-bucket-nix-cache-test/ \
--lR \
+--long \
+--recursive \
 $(nix eval --raw github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello)
 ```
 
@@ -1141,3 +1169,15 @@ Refs.:
 ```bash
 nix path-info --sigs $(readlink -f result)
 ```
+
+
+#### Troubleshoting, old
+
+
+For some reason once in the past someone messed up its aws region, here is how to use a different region:
+```bash
+AWS_DEFAULT_REGION=xy-abcd-w 
+aws s3 ls
+```
+https://github.com/aws/aws-cli/issues/3772#issuecomment-657038848
+
