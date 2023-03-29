@@ -7,9 +7,20 @@ test -d ~/.aws || mkdir -pv ~/.aws
 
 cat > ~/.aws/credentials << 'EOF'
 [default]
-aws_access_key_id = YOUR_ACCESS_KEY_ID
-aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
+aws_access_key_id = AKIFOOBAR
+aws_secret_access_key = aAbcDeF
 EOF
+
+cat > ~/.aws/config << 'EOF'
+[default]
+region = us-east-1
+output = json
+EOF
+```
+
+
+```bash
+aws s3 ls
 ```
 
 
@@ -64,16 +75,34 @@ Testing it via CLI using `curl`:
 curl https://playing-bucket-nix-cache-test.s3.amazonaws.com/foo.txt
 ```
 
+Empting a bucket:
+```bash
+aws s3 rm s3://playing-bucket-nix-cache-test --recursive
+```
+Refs.:
+- https://docs.aws.amazon.com/AmazonS3/latest/userguide/empty-bucket.html
+
 
 WARNING: be carefull. Removing the bucket:
+
+> Note: `rb` stands for "remove bucket".
+
 ```bash
 aws s3 rb s3://playing-bucket-nix-cache-test --force
 ```
+
+
 
 So this is going to be empty:
 ```bash
 aws s3 ls
 ```
+
+```bash
+aws s3 ls --summarize --human-readable --recursive s3://playing-bucket-nix-cache-test/foo.txt
+```
+Refs.:
+- https://aws.amazon.com/pt/blogs/storage/find-out-the-size-of-your-amazon-s3-buckets/
 
 TODO: how to remove only some files in the s3 bucket?
 
@@ -118,6 +147,14 @@ ls \
 --recursive \
 $(nix eval --raw github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello)
 ```
+
+```bash
+nix \
+copy \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#python3 \
+--to 's3://playing-bucket-nix-cache-test'
+```
+
 
 
 ```bash
