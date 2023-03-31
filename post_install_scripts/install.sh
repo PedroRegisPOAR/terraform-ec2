@@ -1,6 +1,26 @@
 #!/bin/bash
 
 
+command -v curl || (command -v apt && apt-get update && apt-get install -y curl)
+
+
+curl -fsSL https://get.docker.com | sh
+usermod --append --groups docker ubuntu \
+&& docker --version \
+&& docker images
+
+#su ubuntu -lc \
+#'
+#    NIX_RELEASE_VERSION=2.10.2 \
+#    && curl -L https://releases.nixos.org/nix/nix-"${NIX_RELEASE_VERSION}"/install | sh -s -- --no-daemon
+#    && . "$HOME"/.nix-profile/etc/profile.d/nix.sh
+#
+#    test -d "$HOME"/.profile || touch "$HOME"/.profile
+#
+#    echo ". \"$HOME\"/.nix-profile/etc/profile.d/nix.sh" >> "$HOME"/.profile
+#    echo "export NIX_CONFIG=\"extra-experimental-features = nix-command flakes\"" >> "$HOME"/.profile
+#'
+
 
 # TODO: check if the instance size is related to reproducibility of the bug
 #  It blows up if it is not set to /tmp the size of ~/tmp is too small

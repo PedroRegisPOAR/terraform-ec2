@@ -61,9 +61,9 @@ module "ec2_cluster" {
   # https://aws.amazon.com/ec2/instance-types/?nc1=h_ls
   # instance_type          = "i3.metal"
   # instance_type          = "t2.nano"
-  # instance_type          = "t2.micro"
+  instance_type          = "t2.micro"
   # instance_type          = "t2.medium"
-  instance_type          = "t2.xlarge"
+  # instance_type          = "t2.xlarge"
   # instance_type          = "t2.2xlarge"
 
   # instance_type          = "r6g.4xlarge"

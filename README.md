@@ -63,6 +63,17 @@ make destroy args='-auto-approve' \
     -o StrictHostKeyChecking=accept-new
 ```
 
+
+```bash
+TERRAFORM_OUTPUT_PUBLIC_IP="$(terraform output ec2_instance_public_ip)" \
+&& while ! nc -t -w 1 -z "${TERRAFORM_OUTPUT_PUBLIC_IP}" 22; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 0.5; done \
+&& ssh \
+    ubuntu@"${TERRAFORM_OUTPUT_PUBLIC_IP}" \
+    -i ~/.ssh/my-ec2.pem \
+    -o StrictHostKeyChecking=no \
+    -o StrictHostKeyChecking=accept-new
+```
+
 Maybe useful:
 ```bash
 nix develop .#

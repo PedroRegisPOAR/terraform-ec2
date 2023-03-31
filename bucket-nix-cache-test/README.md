@@ -3,26 +3,31 @@
 
 Configuring the aws CLI:
 ```bash
+sudo \
+sh <<'EOF'
+
 test -d ~/.aws || mkdir -pv ~/.aws
 
-cat > ~/.aws/credentials << 'EOF'
+cat > ~/.aws/credentials << 'NESTEDEOF'
 [default]
-aws_access_key_id = AKIFOOBAR
-aws_secret_access_key = aAbcDeF
-EOF
+aws_access_key_id = AKI_
+aws_secret_access_key = y6Nc
+NESTEDEOF
 
-cat > ~/.aws/config << 'EOF'
+cat > ~/.aws/config << 'NESTEDEOF'
 [default]
 region = us-east-1
 output = json
+NESTEDEOF
+
+aws s3 ls
 EOF
 ```
 
 
 ```bash
-aws s3 ls
+nix store ping --store s3://playing-bucket-nix-cache-test
 ```
-
 
 ### s3 bucket
 
@@ -104,16 +109,6 @@ aws s3 ls --summarize --human-readable --recursive s3://playing-bucket-nix-cache
 Refs.:
 - https://aws.amazon.com/pt/blogs/storage/find-out-the-size-of-your-amazon-s3-buckets/
 
-TODO: how to remove only some files in the s3 bucket?
-
-
-#### nix cache in s3 bucket
-
-
-
-```bash
-aws s3 cp nix-cache-info s3://playing-bucket-nix-cache-test/
-```
 
 How to print all the s3 bucket contents:
 ```bash
@@ -121,6 +116,16 @@ aws s3 cp s3://playing-bucket-nix-cache-test/nix-cache-info -
 ```
 Refs.:
 - https://stackoverflow.com/a/28390423
+
+
+#### nix cache in s3 bucket
+
+
+TODO: document it
+```bash
+aws s3 cp nix-cache-info s3://playing-bucket-nix-cache-test/
+```
+
 
 ```bash
 curl -I https://playing-bucket-nix-cache-test.s3.amazonaws.com/nix-cache-info
@@ -142,7 +147,7 @@ github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello \
 nix \
 store \
 ls \
---store s3://playing-bucket-nix-cache-test/ \
+--store 's3://playing-bucket-nix-cache-test/' \
 --long \
 --recursive \
 $(nix eval --raw github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello)
@@ -150,9 +155,555 @@ $(nix eval --raw github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#h
 
 ```bash
 nix \
+build \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--store ssh-ng://builder \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#python3Full
+```
+
+
+
+```bash
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--store ssh-ng://builder \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello
+```
+
+```bash
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--store ssh-ng://builder \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.hello
+```
+
+
+```bash
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--store ssh-ng://builder \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsCross.aarch64-multiplatform.pkgsStatic.hello
+```
+
+
+binarycache-1:vBBc6CVmjXj5dPH0x5zPPZvkc1U9QbVoSqHcUcx6cSY=
+```bash
+nix \
+--option eval-cache false \
+--option extra-trusted-public-keys binarycache-1:tcdI+LZIBrh5xmvW2P0NO5ZPwTKpkCoGq3Hmmj58yOI= \
+--option extra-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+build \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsCross.aarch64-multiplatform.pkgsStatic.hello
+```
+
+
+```bash
+export NIXPKGS_ALLOW_UNFREE=1
+
+nix \
+build \
+--impure \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--store ssh-ng://builder \
+--substituters '' \
+~/.config/nixpkgs#homeConfigurations.vagrant.activationPackage
+```
+
+```bash
+nix \
+--option eval-cache false \
+--option extra-trusted-public-keys binarycache-1:vBBc6CVmjXj5dPH0x5zPPZvkc1U9QbVoSqHcUcx6cSY= \
+--option extra-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+build \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+~/.config/nixpkgs#homeConfigurations.vagrant.activationPackage
+```
+
+
+```bash
+nix \
+build \
+--impure \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--store ssh-ng://builder \
+--substituters '' \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsCross.aarch64-darwin.pkgsStatic.dockerTools.examples.redis
+```
+
+
+```bash
+nix \
+build \
+--keep-failed \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#systemd
+```
+
+
+```bash
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--store ssh-ng://builder \
+--substituters '' \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#systemd
+```
+
+
+```bash
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--store ssh-ng://builder \
+--substituters '' \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsCross.x86_64-embedded.hello
+```
+
+```bash
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--store ssh-ng://builder \
+--substituters '' \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsCross.x86_64-embedded.pkgsStatic.hello
+```
+
+
+```bash
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--store ssh-ng://builder \
+--substituters '' \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsCross.aarch64-multiplatform.pkgsStatic.hello
+```
+
+
+```bash
+export NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1
+
+nix \
+build \
+--impure \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--store ssh-ng://builder \
+--substituters '' \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsCross.aarch64-darwin.pkgsStatic.dockerTools.examples.redis
+```
+
+
+```bash
+# --max-jobs 0 \
+
+nix \
+build \
+--option trusted-public-keys 'binarycache-1:EI/f6+36zVrbrmH0CiPOkC8s9JWVs+X6UpJv2VQUcsQ=' \
+--store 's3://playing-bucket-nix-cache-test/' \
+--eval-store auto \
+--keep-failed \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.hello
+```
+
+
+```bash
+# --max-jobs 0 \
+
+nix \
+build \
+--option trusted-public-keys 'binarycache-1:EI/f6+36zVrbrmH0CiPOkC8s9JWVs+X6UpJv2VQUcsQ=' \
+--store 's3://playing-bucket-nix-cache-test/' \
+--eval-store auto \
+--keep-failed \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsCross.aarch64-multiplatform.pkgsStatic.hello
+```
+
+
+```bash
+nix \
+store \
+ls \
+--store 's3://playing-bucket-nix-cache-test/' \
+--long \
+--recursive \
+$(nix eval --raw github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello)
+```
+
+
+
+```bash
+nix \
 copy \
 github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#python3 \
 --to 's3://playing-bucket-nix-cache-test'
+```
+
+
+
+```bash
+EXPR_NIX='
+  (
+    (
+      (
+        builtins.getFlake "github:NixOS/nixpkgs/4b4f4bf2845c6e2cc21cd30f2e297908c67d8611"
+      ).lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [ 
+                      "${toString (builtins.getFlake "github:NixOS/nixpkgs/4b4f4bf2845c6e2cc21cd30f2e297908c67d8611")}/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"
+                      { 
+                        # https://nixos.wiki/wiki/Creating_a_NixOS_live_CD#Building_faster
+                        isoImage.squashfsCompression = "gzip -Xcompression-level 1";
+                      }
+                    ];
+      }
+    ).config.system.build.isoImage
+  )
+'
+
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--store ssh-ng://builder \
+--substituters '' \
+--expr \
+$EXPR_NIX
+```
+
+
+```bash
+nix \
+build \
+--eval-store auto \
+--store ssh-ng://builder \
+--impure \
+--expr \
+'
+  (
+    (
+      (
+        builtins.getFlake "github:NixOS/nixpkgs/4b4f4bf2845c6e2cc21cd30f2e297908c67d8611"
+      ).lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [ 
+                      "${toString (builtins.getFlake "github:NixOS/nixpkgs/4b4f4bf2845c6e2cc21cd30f2e297908c67d8611")}/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"
+                      { 
+                        # https://nixos.wiki/wiki/Creating_a_NixOS_live_CD#Building_faster
+                        isoImage.squashfsCompression = "gzip -Xcompression-level 1";
+                      }
+                    ];
+      }
+    ).config.system.build.isoImage
+  )
+'
+```
+
+
+```bash
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--refresh \
+--store ssh-ng://builder \
+--expr \
+'
+(
+  (
+    (
+      builtins.getFlake "github:NixOS/nixpkgs/4b4f4bf2845c6e2cc21cd30f2e297908c67d8611"
+    ).lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [ 
+                    "${toString (builtins.getFlake "github:NixOS/nixpkgs/4b4f4bf2845c6e2cc21cd30f2e297908c67d8611")}/nixos/modules/installer/cd-dvd/installation-cd-minimal.nix"
+                    { 
+                      # https://nixos.wiki/wiki/Creating_a_NixOS_live_CD#Building_faster
+                      isoImage.squashfsCompression = "gzip -Xcompression-level 1";
+                    }
+                  ];
+    }
+  ).config.system.build.isoImage
+)
+'
+
+# EXPECTED_SHA512='c24d5b36de84ebd88df2946bd65259d81cbfcb7da30690ecaeacb86e0c1028d4601e1f6165ea0775791c18161eee241092705cd350f0e935c715f2508c915741'
+# EXPECTED_SHA512='5a761bd0f539a6ef53a002f73ee598e728565d7ac2f60a5947862d8795d233e3cf6bbf3c55f70a361f55e4b30e499238799d2ddb379e10a063d469d93276e3d8'
+EXPECTED_SHA512='b6811ca1bc46b8b8dbc7dc94b62c71a83ef1a1dae0c7586e600010d8899100d2e58fb3aa585c398036f49b5e22a6a3ce10ceb142db0f37c098bc7e5a71894515'
+ISO_PATTERN_NAME='result/iso/nixos-21.11.20210618.4b4f4bf-x86_64-linux.iso'
+# sha512sum "${ISO_PATTERN_NAME}"
+echo "${EXPECTED_SHA512}"'  '"${ISO_PATTERN_NAME}" | sha512sum -c
+```
+
+
+```bash
+nix \
+copy \
+--from ssh-ng://builder \
+/nix/store/brdqd7bpp67nyqfacza7ffzwjfp37zrg-hello-static-x86_64-unknown-linux-musl-2.12.drv
+```
+
+```bash
+nix \
+copy \
+--no-check-sigs \
+--from ssh-ng://builder \
+/nix/store/7l35kkayn7a52yqgxzcmjvvg0xnslgrc-nixos-21.11.20210618.4b4f4bf-x86_64-linux.iso.drv
+```
+Refs.:
+- https://github.com/NixOS/nix/issues/4894#issuecomment-1252510474
+
+
+```bash
+export HOST_MAPPED_PORT=10022
+export REMOVE_DISK=true
+export QEMU_NET_OPTS='hostfwd=tcp::10022-:10022'
+export QEMU_OPTS='-nographic'
+export SHARED_DIR="$(pwd)"
+
+"$REMOVE_DISK" && rm -fv nixos.qcow2
+nc -v -4 localhost "$HOST_MAPPED_PORT" -w 1 -z && echo 'There is something already using the port:'"$HOST_MAPPED_PORT"
+
+# sudo lsof -t -i tcp:10022 -s tcp:listen
+# sudo lsof -t -i tcp:10022 -s tcp:listen | sudo xargs --no-run-if-empty kill
+
+cat << 'EOF' >> id_ed25519
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+QyNTUxOQAAACCsoS8eR1Ot8ySeS8eI/jUwvzkGe1npaHPMvjp+Ou5JcgAAAIjoIwah6CMG
+oQAAAAtzc2gtZWQyNTUxOQAAACCsoS8eR1Ot8ySeS8eI/jUwvzkGe1npaHPMvjp+Ou5Jcg
+AAAEAbL0Z61S8giktfR53dZ2fztctV/0vML24doU0BMGLRZqyhLx5HU63zJJ5Lx4j+NTC/
+OQZ7Weloc8y+On467klyAAAAAAECAwQF
+-----END OPENSSH PRIVATE KEY-----
+EOF
+
+chmod -v 0600 id_ed25519
+
+EXPR_NIX='
+(
+  (
+    with builtins.getFlake "github:NixOS/nixpkgs/a8f8b7db23ec6450e384da183d270b18c58493d4";
+    with legacyPackages.aarch64-darwin;
+    let
+      nixuserKeys = writeText "nixuser-keys.pub" "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKyhLx5HU63zJJ5Lx4j+NTC/OQZ7Weloc8y+On467kly";
+    in
+    (
+      builtins.getFlake "github:NixOS/nixpkgs/a8f8b7db23ec6450e384da183d270b18c58493d4"
+    ).lib.nixosSystem {
+        system = "aarch64-darwin";
+        modules = [
+          "${toString (builtins.getFlake "github:NixOS/nixpkgs/a8f8b7db23ec6450e384da183d270b18c58493d4")}/nixos/modules/virtualisation/build-vm.nix"
+          "${toString (builtins.getFlake "github:NixOS/nixpkgs/a8f8b7db23ec6450e384da183d270b18c58493d4")}/nixos/modules/virtualisation/qemu-vm.nix"
+          # "${toString (builtins.getFlake "github:NixOS/nixpkgs/a8f8b7db23ec6450e384da183d270b18c58493d4")}/nixos/modules/virtualisation/qemu-guest.nix"
+          "${toString (builtins.getFlake "github:NixOS/nixpkgs/a8f8b7db23ec6450e384da183d270b18c58493d4")}/nixos/modules/installer/cd-dvd/channel.nix"
+
+          ({
+            # https://gist.github.com/andir/88458b13c26a04752854608aacb15c8f#file-configuration-nix-L11-L12
+            boot.loader.grub.extraConfig = "serial --unit=0 --speed=115200 \n terminal_output serial console; terminal_input serial console";
+            boot.kernelParams = [
+              "console=tty0"
+              "console=ttyAMA0,115200n8"
+              # Set sensible kernel parameters
+              # https://nixos.wiki/wiki/Bootloader
+              # https://git.redbrick.dcu.ie/m1cr0man/nix-configs-rb/commit/ddb4d96dacc52357e5eaec5870d9733a1ea63a5a?lang=pt-PT
+              "boot.shell_on_fail"
+              "panic=30"
+              "boot.panic_on_fail" # reboot the machine upon fatal boot issues
+              # TODO: test it
+              "intel_iommu=on"
+              "iommu=pt"
+
+              # https://discuss.linuxcontainers.org/t/podman-wont-run-containers-in-lxd-cgroup-controller-pids-unavailable/13049/2
+              # https://github.com/NixOS/nixpkgs/issues/73800#issuecomment-729206223
+              # https://github.com/canonical/microk8s/issues/1691#issuecomment-977543458
+              # https://github.com/grahamc/nixos-config/blob/35388280d3b06ada5882d37c5b4f6d3baa43da69/devices/petunia/configuration.nix#L36
+              # cgroup_no_v1=all
+              "swapaccount=0"
+              "systemd.unified_cgroup_hierarchy=0"
+              "group_enable=memory"
+            ];
+
+            boot.tmpOnTmpfs = false;
+            # https://github.com/AtilaSaraiva/nix-dotfiles/blob/main/lib/modules/configHost/default.nix#L271-L273
+            boot.tmpOnTmpfsSize = "100%";
+
+              virtualisation = {
+                # following configuration is added only when building VM with build-vm
+                memorySize = 3072; # Use MiB memory.
+                diskSize = 1024 * 16; # Use MiB memory.
+                cores = 6;         # Simulate 3 cores.
+                #
+                docker.enable = false;
+                useNixStoreImage = true;
+                writableStore = true; # TODO
+              };
+
+              nixpkgs.config.allowUnfree = true;
+              nix = {
+                package = nix;
+                extraOptions = "experimental-features = nix-command flakes repl-flake";
+                readOnlyStore = true;
+              };
+
+              # https://github.com/NixOS/nixpkgs/issues/21332#issuecomment-268730694
+              services.openssh = {
+                allowSFTP = true;
+                kbdInteractiveAuthentication = false;
+                enable = true;
+                forwardX11 = false;
+                passwordAuthentication = false;
+                permitRootLogin = "yes";
+                ports = [ 10022 ];
+                authorizedKeysFiles = [
+                  "${toString nixuserKeys}"
+                ];
+              };
+
+            time.timeZone = "America/Recife";
+            system.stateVersion = "22.11";
+
+            users.users.root = {
+              password = "root";
+              initialPassword = "root";
+              openssh.authorizedKeys.keyFiles = [
+                nixuserKeys
+              ];
+            };
+          })
+        ];
+    }
+  ).config.system.build.vm
+)
+' 
+
+
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--store ssh-ng://builder \
+--substituters '' \
+--expr \
+$EXPR_NIX 
+
+nix \
+run \
+--impure \
+--expr \
+$EXPR_NIX \
+< /dev/null &
+
+while ! nc -t -w 1 -z localhost 10022; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 0.5; done \
+&& ssh-keygen -R '[localhost]:10022'; \
+ssh \
+-i id_ed25519 \
+-tt \
+-X \
+-o StrictHostKeyChecking=no \
+nixuser@localhost \
+-p 10022
+#<<COMMANDS
+#id
+#COMMANDS
+#"$REMOVE_DISK" && rm -fv nixos.qcow2 id_ed25519
 ```
 
 
@@ -230,23 +781,26 @@ nix \
 store \
 ls \
 --store s3://playing-bucket-nix-cache-test/ \
--lR \
-$(nix \
-eval \
---raw \
---impure \
---expr \
-'(
-  with builtins.getFlake "github:NixOS/nixpkgs/573603b7fdb9feb0eb8efc16ee18a015c667ab1b"; 
-  with legacyPackages.${builtins.currentSystem};
-  (openssl_1_1.overrideAttrs (oldAttrs: rec {
-    src = fetchurl {
-      url = https://www.openssl.org/source/old/1.1.1/openssl-1.1.1l.tar.gz;
-      sha256 = "sha256-C3o+XlnDSCf+DDp0t+yLrvMCuY+oAIjX+RU6oW+na9E=";
-    };
-    configureFlags = (oldAttrs.configureFlags or "") ++ [ "-DOPENSSL_TLS_SECURITY_LEVEL=2" ]; 
-  }))
-)')
+--long \
+--recursive \
+$(
+    nix \
+    eval \
+    --raw \
+    --impure \
+    --expr \
+    '(
+      with builtins.getFlake "github:NixOS/nixpkgs/573603b7fdb9feb0eb8efc16ee18a015c667ab1b"; 
+      with legacyPackages.${builtins.currentSystem};
+      (openssl_1_1.overrideAttrs (oldAttrs: rec {
+        src = fetchurl {
+          url = https://www.openssl.org/source/old/1.1.1/openssl-1.1.1l.tar.gz;
+          sha256 = "sha256-C3o+XlnDSCf+DDp0t+yLrvMCuY+oAIjX+RU6oW+na9E=";
+        };
+        configureFlags = (oldAttrs.configureFlags or "") ++ [ "-DOPENSSL_TLS_SECURITY_LEVEL=2" ]; 
+      }))
+    )'
+)
 ```
 
 
@@ -335,7 +889,7 @@ git init && git add .
 
 nix build -L '.#'
 
-nix run '.#'
+nix run '.#hello'
 ```
 
 
@@ -630,7 +1184,7 @@ build \
 --max-jobs 0 \
 --eval-store auto \
 --store ssh-ng://builder \
-'.#'
+'.#slow-text'
 
 
 # If the build is broken it does not work?
@@ -639,7 +1193,7 @@ log \
 --max-jobs 0 \
 --eval-store auto \
 --store ssh-ng://builder \
-'.#'
+'.#slow-text'
 
 ```
 
@@ -708,8 +1262,32 @@ nixpkgs#pkgsStatic.python3
 ```
 
 ```bash
+nix build --max-jobs 0 --eval-store auto --store ssh-ng://builder nixpkgs#pkgsStatic.hello
+```
+
+```bash
+nix build --max-jobs 0 --eval-store auto --store ssh-ng://builder --rebuild nixpkgs#pkgsStatic.hello
+```
+
+```bash
 nix build --max-jobs 0 --eval-store auto --store ssh-ng://builder nixpkgs#pkgsStatic.python3
 ```
+
+
+```bash
+nix \
+--option eval-cache false \
+--option substituters = s3://playing-bucket-nix-cache-test https://cache.nixos.org \
+--option trusted-public-keys = binarycache-1:CI+cN1SZBS+LQb3ubfHKge/VXLyCV0sDCgMjao+cNC4= \
+build \
+nixpkgs#pkgsStatic.python3
+```
+
+```bash
+nix build --max-jobs 0 --eval-store auto --store s3://playing-bucket-nix-cache-test nixpkgs#pkgsStatic.python3
+```
+
+
 
 ```bash
 EXPR_NIX='
@@ -735,11 +1313,6 @@ build \
 --impure \
 --expr \
 $EXPR_NIX
-```
-
-```bash
-mkdir -pv sandbox/sandbox \
-&& cd sandbox/sandbox
 ```
 
 

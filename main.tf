@@ -10,3 +10,4 @@ locals {
   # This is the convention we use to know what belongs to each other
   resource_name = "${local.name}-${local.environment}"
 }
+
