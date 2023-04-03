@@ -10,7 +10,7 @@ test -d ~/.aws || mkdir -pv ~/.aws
 
 cat > ~/.aws/credentials << 'NESTEDEOF'
 [default]
-aws_access_key_id = AKI_
+aws_access_key_id = AKI
 aws_secret_access_key = y6Nc
 NESTEDEOF
 
@@ -104,7 +104,7 @@ aws s3 ls
 ```
 
 ```bash
-aws s3 ls --summarize --human-readable --recursive s3://playing-bucket-nix-cache-test/foo.txt
+aws s3 ls --summarize --human-readable --recursive s3://playing-bucket-nix-cache-test
 ```
 Refs.:
 - https://aws.amazon.com/pt/blogs/storage/find-out-the-size-of-your-amazon-s3-buckets/
@@ -142,7 +142,6 @@ github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello \
 --to 's3://playing-bucket-nix-cache-test'
 ```
 
-
 ```bash
 nix \
 store \
@@ -152,21 +151,6 @@ ls \
 --recursive \
 $(nix eval --raw github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello)
 ```
-
-```bash
-nix \
-build \
---eval-store auto \
---keep-failed \
---max-jobs 0 \
---no-link \
---print-build-logs \
---print-out-paths \
---rebuild \
---store ssh-ng://builder \
-github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#python3Full
-```
-
 
 
 ```bash
@@ -183,6 +167,71 @@ build \
 github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello
 ```
 
+
+```bash
+nix-store --query --requisites --include-outputs --force-realise \
+$(nix path-info github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello) \
+| xargs -I{} nix \
+    copy \
+    --no-check-sigs \
+    {} \
+    --to 's3://playing-bucket-nix-cache-test'
+```
+
+
+
+Build it from s3 custom cache AND the official cache:
+```bash
+nix \
+--option eval-cache false \
+--option extra-trusted-public-keys binarycache-1:3IpDUoZn47UKPA/SFvgrTLIskDMoxG8xyeqRP/f5RvM=% \
+--option extra-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+build \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello
+```
+Refs.:
+- https://github.com/NixOS/nix/issues/6672#issuecomment-1251573660
+
+
+
+```bash
+nix-store --query --requisites --include-outputs --force-realise \
+$(nix path-info --derivation github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello) \
+| xargs -I{} nix \
+    copy \
+    --no-check-sigs \
+    {} \
+    --to 's3://playing-bucket-nix-cache-test'
+```
+
+Build and `--rebuild` it from s3 cache ONLY:
+```bash
+nix \
+--option eval-cache false \
+--option trusted-public-keys binarycache-1:JQoiDAGCaEkxmSPGLuM4qZVA+NDrBQHrVYY4Wi/Zi/E= \
+--option substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+build \
+--keep-failed \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello
+```
+Refs.:
+- https://github.com/NixOS/nix/issues/6672#issuecomment-1251573660
+
+
+nix build --no-link --print-build-logs --rebuild \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#gcc-unwrapped
+
+
+
 ```bash
 nix \
 build \
@@ -198,6 +247,357 @@ github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.hello
 ```
 
 
+
+```bash
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--store ssh-ng://builder \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix
+```
+
+#### hello in s3 cache
+
+In the client:
+```bash
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--store ssh-ng://builder \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello
+```
+
+In the builder itself:
+```bash
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello
+```
+
+
+Note: the `--rebuild` flag:
+```bash
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello
+```
+
+
+##### Testing the populated cache
+
+
+Testing that it is in the cache:
+```bash
+nix \
+--option eval-cache false \
+store \
+ls \
+--store 's3://playing-bucket-nix-cache-test/' \
+--long \
+--recursive \
+$(nix eval --raw github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello)
+```
+
+Build it from s3 cache:
+```bash
+nix \
+--option eval-cache false \
+--option extra-trusted-public-keys binarycache-1:iuW9hwt11/OqxdXo1Hf0r+1Vp3CxSvd9kok7xi0HqAM= \
+--option extra-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+build \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello
+```
+Refs.:
+- https://github.com/NixOS/nix/issues/6672#issuecomment-1251573660
+
+
+
+The fastest:
+```bash
+nix \
+--option eval-cache false \
+--option trusted-public-keys binarycache-1:iuW9hwt11/OqxdXo1Hf0r+1Vp3CxSvd9kok7xi0HqAM= \
+--option trusted-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+build \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello
+```
+
+
+```bash
+nix \
+--option eval-cache false \
+--option trusted-public-keys binarycache-1:iuW9hwt11/OqxdXo1Hf0r+1Vp3CxSvd9kok7xi0HqAM= \
+--option trusted-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+--option build-use-substitutes false \
+--option substitute false \
+--extra-experimental-features 'nix-command flakes' \
+build \
+--keep-failed \
+--no-link \
+--max-jobs 0 \
+--print-build-logs \
+--print-out-paths \
+--substituters "https://playing-bucket-nix-cache-test.s3.amazonaws.com" \
+'github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello'
+```
+
+Forcing a local build with `--rebuild` and remove `--max-jobs 0`:
+```bash
+nix \
+--option eval-cache false \
+--option trusted-public-keys binarycache-1:iuW9hwt11/OqxdXo1Hf0r+1Vp3CxSvd9kok7xi0HqAM= \
+--option trusted-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+build \
+--keep-failed \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello
+```
+
+
+```bash
+nix \
+--option trusted-public-keys binarycache-1:iuW9hwt11/OqxdXo1Hf0r+1Vp3CxSvd9kok7xi0HqAM= \
+--option trusted-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+--option build-use-substitutes true \
+--option substitute true \
+--extra-experimental-features 'nix-command flakes' \
+build \
+--keep-failed \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+'github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello'
+```
+
+
+
+#### pkgsStatic.hello
+
+
+
+In the builder itself:
+```bash
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.hello
+```
+
+```bash
+nix \
+copy \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.hello \
+--to 's3://playing-bucket-nix-cache-test'
+```
+
+```bash
+nix \
+--option trusted-public-keys binarycache-1:iuW9hwt11/OqxdXo1Hf0r+1Vp3CxSvd9kok7xi0HqAM= \
+--option trusted-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+--option build-use-substitutes true \
+--option substitute true \
+--extra-experimental-features 'nix-command flakes' \
+build \
+--keep-failed \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+'github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.hello'
+```
+
+
+#### pkgsCross.aarch64-multiplatform.pkgsStatic.hello
+
+
+
+```bash
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--store ssh-ng://builder \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsCross.aarch64-multiplatform.pkgsStatic.hello
+```
+
+
+With `--rebuild`:
+```bash
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--store ssh-ng://builder \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsCross.aarch64-multiplatform.pkgsStatic.hello
+```
+
+
+
+```bash
+nix-store --query --requisites --include-outputs --force-realise \
+$(nix path-info --derivation github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.hello) \
+| wc -l
+```
+
+
+
+```bash
+nix \
+copy \
+$(nix eval --raw --expr $EXPR_NIX) \
+--to 's3://playing-bucket-nix-cache-test'
+```
+
+
+```bash
+nix-store --query --requisites --include-outputs --force-realise \
+$(nix path-info --derivation github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsCross.aarch64-multiplatform.pkgsStatic.hello) \
+| xargs -I{} nix \
+    copy \
+    --no-check-sigs \
+    {} \
+    --to 's3://playing-bucket-nix-cache-test'
+```
+
+```bash
+nix-store --query --requisites --include-outputs --force-realise \
+$(nix path-info --derivation github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsCross.aarch64-multiplatform.pkgsStatic.hello) \
+| xargs -I{} aws s3 cp \
+    {} \
+    s3://playing-bucket-nix-cache-test
+```
+
+
+```bash
+nix \
+path-info \
+--closure-size \
+--eval-store auto \
+--store s3://playing-bucket-nix-cache-test \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsCross.aarch64-multiplatform.pkgsStatic.hello
+```
+
+#### pkgsStatic.python3Minimal
+
+
+```bash
+EXPR_NIX='
+  (
+    with builtins.getFlake "github:NixOS/nixpkgs/3364b5b117f65fe1ce65a3cdd5612a078a3b31e3";
+    with legacyPackages.${builtins.currentSystem};
+    (pkgsStatic.python3Minimal.override
+      {
+        reproducibleBuild = true;
+      }
+    )
+  )
+'
+
+nix \
+build \
+--impure \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--store ssh-ng://builder \
+--expr \
+"$EXPR_NIX"
+
+EXPECTED_SHA512SUM=b6621c62c76c3d09c488222a5813e2f67f4f256c66780ca0da41eb6fe71d798c702e270c35cfa3b761484eef8a539589b3b3824523ecf6a8ad837ab74a3ce506
+FULL_PATH=$(nix eval --impure --raw --expr $EXPR_NIX)/bin/python
+echo "$EXPECTED_SHA512SUM"'  '"$FULL_PATH" | sha512sum -c
+```
+
+
+
+
+
+#### pkgsStatic.nix
+
+```bash
+nix \
+--option eval-cache false \
+--option extra-trusted-public-keys binarycache-1:PbJHKsLPq2DJ2OXhvqk1VgwFl04tvaHz3PzjZrrFNh0= \
+store \
+ls \
+--store 's3://playing-bucket-nix-cache-test/' \
+--long \
+--recursive \
+$(nix eval --raw github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix)
+```
+
+
+```bash
+nix \
+--option eval-cache false \
+--option extra-trusted-public-keys binarycache-1:iuW9hwt11/OqxdXo1Hf0r+1Vp3CxSvd9kok7xi0HqAM= \
+--option extra-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+build \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix
+```
+
+--eval-store ??
 ```bash
 nix \
 build \
@@ -230,6 +630,186 @@ github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsCross.aarch64-
 
 
 ```bash
+EXPR_NIX='
+  (
+    with builtins.getFlake "github:NixOS/nixpkgs/3364b5b117f65fe1ce65a3cdd5612a078a3b31e3";
+    with legacyPackages.${builtins.currentSystem};
+      (pkgsStatic.nix.overrideAttrs (oldAttrs: {
+          configureFlags = (oldAttrs.configureFlags or "") ++ [ 
+            "--with-store-dir=/home/abcuser/.local/share/nix/root/nix/store"
+            "--localstatedir=/home/abcuser/.local/share/nix/root/nix/var"
+            "--sysconfdir=/home/abcuser/.local/share/nix/root/etc"
+            "--enable-gc"
+            "--disable-doc-gen"
+            "--with-sandbox-shell=${busybox-sandbox-shell}/bin/busybox"
+            "--enable-embedded-sandbox-shell"
+            "--enable-static"
+            "--disable-shared"
+            "--disable-shared"
+            "--build=x86_64-unknown-linux-gnu"
+            "--host=x86_64-unknown-linux-musl"
+          ];
+      })).override {
+        storeDir = "/home/abcuser/.local/share/nix/root";
+        stateDir = "/home/abcuser/.local/share/nix/root";
+        confDir = "/home/abcuser/.local/share/nix/root";
+      }
+  )
+'
+
+
+nix show-derivation --impure --expr "$EXPR_NIX"
+
+
+
+#nix \
+#build \
+#--impure \
+#--keep-failed \
+#--no-link \
+#--print-build-logs \
+#--print-out-paths \
+#--expr $EXPR_NIX
+
+time \
+nix \
+build \
+--impure \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--store ssh-ng://builder \
+--substituters '' \
+--expr "$EXPR_NIX"
+```
+
+
+
+```bash
+time \
+nix-store --query --requisites --include-outputs --force-realise \
+/nix/store/llnb5mxrxaa5njj3jvqm0kw002x1ww27-nix-static-x86_64-unknown-linux-musl-2.13.3 \
+| xargs -I{} nix \
+    copy \
+    --no-check-sigs \
+    {} \
+    --to 's3://playing-bucket-nix-cache-test'
+```
+
+
+
+
+In the client. The fastest:
+```bash
+EXPR_NIX='
+  (
+    with builtins.getFlake "github:NixOS/nixpkgs/3364b5b117f65fe1ce65a3cdd5612a078a3b31e3";
+    with legacyPackages.${builtins.currentSystem};
+    
+      (pkgsStatic.nix.override {
+        storeDir = "/home/abcuser/.nix/store";
+        stateDir = "/home/abcuser/.nix/var";
+        confDir = "/home/abcuser/.nix/etc";
+      })
+  )
+'
+
+
+nix \
+--option eval-cache false \
+store \
+ls \
+--store 's3://playing-bucket-nix-cache-test/' \
+--long \
+--recursive \
+$(nix eval --impure --raw --expr $EXPR_NIX)
+
+
+# --max-jobs 0 \
+nix \
+--option eval-cache false \
+--option trusted-public-keys binarycache-1:iuW9hwt11/OqxdXo1Hf0r+1Vp3CxSvd9kok7xi0HqAM= \
+--option extra-trusted-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+build \
+--keep-failed \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+$(nix eval --raw --expr "$EXPR_NIX")
+```
+
+```bash
+nix-store --query --requisites --include-outputs --force-realise \
+$(nix path-info --derivation --raw github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsCross.aarch64-multiplatform.pkgsStatic.hello) \
+| wc -l
+```
+
+
+
+
+```bash
+EXPR_NIX='
+  (
+    with builtins.getFlake "github:NixOS/nixpkgs/3364b5b117f65fe1ce65a3cdd5612a078a3b31e3";
+    with legacyPackages.${builtins.currentSystem};
+    
+      (pkgsStatic.nix.override {
+        storeDir = "/home/vagrant/.nix/store";
+        stateDir = "/home/vagrant/.nix/var";
+        confDir = "/home/vagrant/.nix/etc";
+      })
+  )
+'
+
+#nix \
+#build \
+#--impure \
+#--keep-failed \
+#--no-link \
+#--print-build-logs \
+#--print-out-paths \
+#--expr $EXPR_NIX
+
+nix \
+build \
+--impure \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--store ssh-ng://builder \
+--substituters '' \
+--expr $EXPR_NIX
+```
+
+
+
+```bash
+FLAKE_ATTR=".#homeConfigurations.""$HM_ATTR_FULL_NAME"".activationPackage"
+
+nix \
+--option eval-cache false \
+--option extra-trusted-public-keys binarycache-1:XiPHS/XT/ziMHu5hGoQ8Z0K88sa1Eqi5kFTYyl33FJg= \
+--option extra-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+build \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+"$FLAKE_ATTR"
+```
+
+
+#### Vagrant 
+
+```bash
 export NIXPKGS_ALLOW_UNFREE=1
 
 nix \
@@ -258,6 +838,60 @@ build \
 --print-build-logs \
 --print-out-paths \
 ~/.config/nixpkgs#homeConfigurations.vagrant.activationPackage
+```
+
+
+
+
+```bash
+export NIXPKGS_ALLOW_UNFREE=1
+
+nix \
+build \
+--impure \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--store ssh-ng://builder \
+--substituters '' \
+~/.config/nixpkgs#homeConfigurations.vagrant-alpine316.localdomain.activationPackage
+```
+
+```bash
+export NIXPKGS_ALLOW_UNFREE=1
+
+nix \
+--option eval-cache false \
+--option extra-trusted-public-keys binarycache-1:vBBc6CVmjXj5dPH0x5zPPZvkc1U9QbVoSqHcUcx6cSY= \
+--option extra-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+build \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+~/.config/nixpkgs#homeConfigurations.vagrant-alpine316.localdomain.activationPackage
+```
+
+
+```bash
+export NIXPKGS_ALLOW_UNFREE=1
+
+nix \
+build \
+--impure \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--store ssh-ng://builder \
+--substituters '' \
+~/.config/nixpkgs#homeConfigurations."$(hostname)"-"$(id -un)".activationPackage
 ```
 
 
