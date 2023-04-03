@@ -77,6 +77,14 @@ module "ec2_cluster" {
 
   user_data = file("./post_install_scripts/install.sh")
 
+  root_block_device = [
+    {
+      volume_size = 120
+      # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance#delete_on_termination
+      delete_on_termination = true
+    },
+  ]
+
   tags = {
     Name        = local.name
     Environment = local.environment
