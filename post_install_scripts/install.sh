@@ -1,6 +1,15 @@
 #!/bin/bash
 
 
+
+# sudo su
+# echo 'ubuntu2204-ec2' > /etc/hostname
+# hostname ubuntu2204-ec2
+
+echo 'ubuntu2204-ec2' > /etc/hostname
+hostname ubuntu2204-ec2
+
+
 command -v curl || (command -v apt && apt-get update && apt-get install -y curl)
 
 
