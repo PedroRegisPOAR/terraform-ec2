@@ -31,8 +31,16 @@ module "ec2_cluster" {
 
   # This is an Ubuntu 22.04 amd64
   # uname -a
+  # Linux ip-10-1-11-201 5.15.0-1004-aws #6-Ubuntu SMP Thu Mar 31 09:44:20 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux
   # From: https://cloud-images.ubuntu.com/locator/
   ami                    = "ami-09d56f8956ab235b3"
+
+  # This is an Ubuntu 22.04 arm64
+  # uname -a
+  # TODO: it is broken as of now, why?
+  # From: https://cloud-images.ubuntu.com/locator/
+  # ami                    = "ami-0c6c29c5125214c77"
+
 
   # 20.04
   # ami                    = "ami-0c4f7023847b90238"
