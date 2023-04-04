@@ -37,6 +37,7 @@ EOF
 cat > ~/.aws/config << 'EOF'
 [default]
 region = us-east-1
+output = json
 EOF
 ```
 

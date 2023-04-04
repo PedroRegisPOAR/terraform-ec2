@@ -1,5 +1,6 @@
 .idea/
 .terraform/
+meta-terraform/.terraform/
 .direnv/
 result
 result-bin
