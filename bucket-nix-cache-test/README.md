@@ -10,8 +10,8 @@ test -d ~/.aws || mkdir -pv ~/.aws
 
 cat > ~/.aws/credentials << 'NESTEDEOF'
 [default]
-aws_access_key_id = AKI
-aws_secret_access_key = y6Nc
+aws_access_key_id = 
+aws_secret_access_key = 
 NESTEDEOF
 
 cat > ~/.aws/config << 'NESTEDEOF'
@@ -262,6 +262,26 @@ build \
 github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix
 ```
 
+
+
+```bash
+nix \
+build \
+--builders-use-substitutes \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--store ssh-ng://builder \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.hello
+```
+Refs.:
+- https://gist.github.com/danbst/09c3f6cd235ae11ccd03215d4542f7e7?permalink_comment_id=3140653#gistcomment-3140653
+
+
+
 #### hello in s3 cache
 
 In the client:
@@ -434,7 +454,8 @@ github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.hello \
 
 ```bash
 nix \
---option trusted-public-keys binarycache-1:iuW9hwt11/OqxdXo1Hf0r+1Vp3CxSvd9kok7xi0HqAM= \
+--option eval-cache false \
+--option trusted-public-keys binarycache-1:XiPHS/XT/ziMHu5hGoQ8Z0K88sa1Eqi5kFTYyl33FJg= \
 --option trusted-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
 --option build-use-substitutes true \
 --option substitute true \
@@ -444,11 +465,17 @@ build \
 --no-link \
 --print-build-logs \
 --print-out-paths \
---rebuild \
+--max-jobs 0 \
 --substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
 'github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.hello'
 ```
 
+
+```bash
+nix \
+--option extra-trusted-public-keys 'binarycache-1:XiPHS/XT/ziMHu5hGoQ8Z0K88sa1Eqi5kFTYyl33FJg=' \
+store verify --sigs-needed 1 'github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.hello'
+```
 
 #### pkgsCross.aarch64-multiplatform.pkgsStatic.hello
 
@@ -2011,9 +2038,14 @@ sudo nix store sign --all --key-file /etc/nix/private-key
 
 ### --post-build-hook
 
+```bash
+mkdir -pv ~/sandbox/sandbox && cd $_
+```
 
 ```bash
-tee custom-build-hook.sh <<EOF
+rm -frv custom-build-hook.sh
+
+tee custom-build-hook.sh <<'EOF'
 #!/usr/bin/env bash
 
 set -euf 
@@ -2021,15 +2053,36 @@ set -euf
 echo "post-build-hook"
 echo "-- ${OUT_PATHS} --"
 echo "^^ ${DRV_PATH} ^^"
+
+# set -x
+
+KEY_FILE=/etc/nix/private-key
+# Testar ?region=eu-west-1
+CACHE=s3://playing-bucket-nix-cache-test/
+
+# mapfile -t DERIVATIONS < <(echo "${OUT_PATHS[@]}" | xargs nix path-info --derivation)
+mapfile -t DERIVATIONS < <(echo "${OUT_PATHS[@]}" | xargs nix path-info)
+mapfile -t DEPENDENCIES < <(echo "${DRV_PATH[@]}" | xargs nix-store --query --requisites --include-outputs --force-realise)
+
+# TODO: é o correto assinar as derivações, os .drv?
+# echo "${DERIVATIONS[@]}" | xargs nix store sign --key-file "$KEY_FILE" --recursive
+
+# TODO:
+# echo "${DEPENDENCIES[@]}" | xargs nix store sign --key-file "$KEY_FILE" --recursive
+
+echo "${DEPENDENCIES[@]}" | xargs nix copy --eval-store auto --no-check-sigs -vvv --to "$CACHE"
+# echo "${DEPENDENCIES[@]}" | xargs nix copy -vvv --to "$CACHE"
+
 EOF
 
 chmod -v 0755 custom-build-hook.sh
 
-./custom-build-hook.sh
+# ./custom-build-hook.sh
 ```
 
 ```bash
-nix build --rebuild -L nixpkgs#hello --post-build-hook ./custom-build-hook.sh
+nix build --max-jobs $(nproc) --rebuild --no-link --print-build-logs \
+nixpkgs#hello --post-build-hook ./custom-build-hook.sh
 ```
 
 ```bash

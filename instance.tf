@@ -71,8 +71,8 @@ module "ec2_cluster" {
   # instance_type          = "t2.nano"
   # instance_type          = "t2.micro"
   # instance_type          = "t2.medium"
-  instance_type          = "t2.xlarge"
-  # instance_type          = "t2.2xlarge"
+  # instance_type          = "t2.xlarge"
+  instance_type          = "t2.2xlarge"
 
   # instance_type          = "r6g.4xlarge"
   # instance_type          = "c5.large"
@@ -87,7 +87,7 @@ module "ec2_cluster" {
 
   root_block_device = [
     {
-      volume_size = 120
+      volume_size = 256
       # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance#delete_on_termination
       delete_on_termination = true
     },
