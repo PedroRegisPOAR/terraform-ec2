@@ -10,8 +10,7 @@ test -d ~/.aws || mkdir -pv ~/.aws
 
 cat > ~/.aws/credentials << 'NESTEDEOF'
 [default]
-aws_access_key_id = 
-aws_secret_access_key = 
+
 NESTEDEOF
 
 cat > ~/.aws/config << 'NESTEDEOF'
