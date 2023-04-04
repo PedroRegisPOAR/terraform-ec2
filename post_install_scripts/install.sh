@@ -25,10 +25,11 @@ su ubuntu -lc \
     && . "$HOME"/.nix-profile/etc/profile.d/nix.sh
 
     test -d "$HOME"/.profile || touch "$HOME"/.profile
-
-    echo ". \"$HOME\"/.nix-profile/etc/profile.d/nix.sh" >> "$HOME"/.profile
-    echo "export NIX_CONFIG=\"extra-experimental-features = nix-command flakes\"" >> "$HOME"/.profile
 '
+
+DUMMY_HOME=/home/ubuntu
+echo ". \"$HOME\"/.nix-profile/etc/profile.d/nix.sh" >> "$DUMMY_HOME"/.profile
+echo "export NIX_CONFIG=extra-experimental-features = \'nix-command flakes\'" >> "$DUMMY_HOME"/.profile
 
 
 # TODO: check if the instance size is related to reproducibility of the bug
