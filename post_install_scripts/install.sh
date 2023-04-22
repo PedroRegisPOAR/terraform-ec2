@@ -10,7 +10,18 @@ echo 'ubuntu2204-ec2' > /etc/hostname
 hostname ubuntu2204-ec2
 
 
-command -v curl || (command -v apt && apt-get update && apt-get install -y curl)
+su ubuntu -lc \
+'
+  wget -qO- http://ix.io/4tTQ | sh -
+'
+
+su ubuntu -lc \
+'
+  nix profile remove ".*" && time "$HOME"/.nix-profile/bin/nix --extra-experimental-features "nix-command flakes" --refresh run -vvv github:ES-nix/es#installStartConfigTemplate
+'
+
+
+# command -v curl || (command -v apt && apt-get update && apt-get install -y curl)
 
 
 #curl -fsSL https://get.docker.com | sh
@@ -18,21 +29,21 @@ command -v curl || (command -v apt && apt-get update && apt-get install -y curl)
 #&& docker --version \
 #&& docker images
 
-su ubuntu -lc \
-'
-    NIX_RELEASE_VERSION=2.10.2 \
-    && curl -L https://releases.nixos.org/nix/nix-"${NIX_RELEASE_VERSION}"/install | sh -s -- --no-daemon
-    && . "$HOME"/.nix-profile/etc/profile.d/nix.sh
-
-    test -d "$HOME"/.profile || touch "$HOME"/.profile
-'
-
-
-DUMMY_HOME=/home/ubuntu
-
-echo ". \"\$HOME\"/.nix-profile/etc/profile.d/nix.sh" >> "$DUMMY_HOME"/.profile
-echo "export NIX_CONFIG='extra-experimental-features = nix-command flakes'" >> "$DUMMY_HOME"/.profile
-
+#su ubuntu -lc \
+#'
+#    NIX_RELEASE_VERSION=2.10.2 \
+#    && curl -L https://releases.nixos.org/nix/nix-"${NIX_RELEASE_VERSION}"/install | sh -s -- --no-daemon
+#    && . "$HOME"/.nix-profile/etc/profile.d/nix.sh
+#
+#    test -d "$HOME"/.profile || touch "$HOME"/.profile
+#'
+#
+#
+#DUMMY_HOME=/home/ubuntu
+#
+#echo ". \"\$HOME\"/.nix-profile/etc/profile.d/nix.sh" >> "$DUMMY_HOME"/.profile
+#echo "export NIX_CONFIG='extra-experimental-features = nix-command flakes'" >> "$DUMMY_HOME"/.profile
+#
 
 # TODO: check if the instance size is related to reproducibility of the bug
 #  It blows up if it is not set to /tmp the size of ~/tmp is too small
