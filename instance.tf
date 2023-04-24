@@ -70,9 +70,9 @@ module "ec2_cluster" {
   # instance_type          = "i3.metal"
   # instance_type          = "t2.nano"
   # instance_type          = "t2.micro"
-  instance_type          = "t2.medium"
+  # instance_type          = "t2.medium"
   # instance_type          = "t2.xlarge"
-  # instance_type          = "t2.2xlarge"
+  instance_type          = "t3.2xlarge"
 
   # instance_type          = "r6g.4xlarge"
   # instance_type          = "c5.large"

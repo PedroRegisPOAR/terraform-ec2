@@ -2619,7 +2619,13 @@ nix \
 store verify --recursive --sigs-needed 3 $(nix build --print-out-paths --no-link nixpkgs#hello)
 ```
 
+#### Other keys
 
+```bash
+hydra.nixos.org-1:CNHJZBh9K4tP3EKF6FkkgeVYsS3ohTl+oS0Qa8bezVs=
+```
+Refs.:
+- https://www.mankier.com/5/nix.conf
 
 #### Inspecting sqlite
 

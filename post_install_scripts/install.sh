@@ -15,10 +15,13 @@ su ubuntu -lc \
   wget -qO- http://ix.io/4tTQ | sh -
 '
 
-su ubuntu -lc \
-'
-  nix profile remove ".*" && time "$HOME"/.nix-profile/bin/nix --extra-experimental-features "nix-command flakes" --refresh run -vvv github:ES-nix/es#installStartConfigTemplate
-'
+# while ! test -f /tmp/foo-bar.txt; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 1; done
+#su ubuntu -lc \
+#'
+#  "$HOME"/.nix-profile/bin/nix --extra-experimental-features "nix-command flakes" profile remove ".*" \
+#  && time "$HOME"/.nix-profile/bin/nix --extra-experimental-features "nix-command flakes" --refresh run -vvv github:ES-nix/es#installStartConfigTemplate \
+#  && touch /tmp/foo-bar.txt
+#'
 
 
 # command -v curl || (command -v apt && apt-get update && apt-get install -y curl)

@@ -131,11 +131,29 @@ delete-subnet \
 --subnet-id=subnet-433c4162
 ```
 
+Not working:
+```bash
+aws ec2 describe-subnets \
+| rg SubnetId \
+| cut -d '"' -f4 \
+| xargs -I{} \
+   aws \
+   ec2 \
+   delete-subnet \
+   --subnet-id={}
+```
+
+```bash
+aws ec2 describe-vpcs | jq '.[][].VpcId'
+```
+
 
 ```bash
 #!/bin/bash
-vpc="vpc-53f1722e" 
+
+vpc="vpc-008db271b63154912" 
 region="us-west-1"
+
 aws ec2 describe-vpc-peering-connections --region $region --filters 'Name=requester-vpc-info.vpc-id,Values='$vpc | grep VpcPeeringConnectionId
 aws ec2 describe-nat-gateways --region $region --filter 'Name=vpc-id,Values='$vpc | grep NatGatewayId
 aws ec2 describe-instances --region $region --filters 'Name=vpc-id,Values='$vpc | grep InstanceId
@@ -148,7 +166,7 @@ aws ec2 describe-internet-gateways
 aws ec2 describe-subnets | grep SubnetId
 aws ec2 describe-vpcs
 
-aws resourcegroupstaggingapi get-resources --region us-west-1
+aws resourcegroupstaggingapi get-resources --region $region
 ```
 Refs.:
 - https://serverfault.com/a/1010868
@@ -156,12 +174,31 @@ Refs.:
 - https://serverfault.com/a/747868
 
 
+
 ```bash
-aws ec2 detach-internet-gateway --internet-gateway-id=igw-1e887e64 --vpc-id=vpc-53f1722e
-aws ec2 delete-internet-gateway --internet-gateway-id=igw-1e887e64
-aws ec2 delete-vpc --vpc-id=vpc-e2087c86
+aws ec2 describe-vpcs | jq '.[][].VpcId' \
+| xargs -I{} \
+  aws ec2 delete-vpc --vpc-id={}
 ```
 
+
+```bash
+vpc="vpc-008db271b63154912" 
+region="us-west-1"
+
+igw="igw-0281f2419ad263c7d"
+
+aws ec2 detach-internet-gateway --internet-gateway-id=$igw --vpc-id=$vpc
+aws ec2 delete-internet-gateway --internet-gateway-id=$igw
+aws ec2 delete-vpc --vpc-id=$vpc
+```
+
+```bash
+aws \
+ec2 \
+delete-network-interface \
+--network-interface-id=eni-0f4b3313ec323350b
+```
 
 #### Install nix?
 
