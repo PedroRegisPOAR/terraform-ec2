@@ -268,6 +268,37 @@ build \
 github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix
 ```
 
+```bash
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--store ssh-ng://builder \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix
+```
+
+```bash
+nix \
+build \
+--eval-store auto \
+--keep-failed \
+--max-jobs 0 \
+--no-link \
+--print-build-logs \
+--print-out-paths \
+--rebuild \
+--store ssh-ng://builder \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsCross.aarch64-multiplatform.pkgsStatic.nixVersions.nix_2_10
+```
+
+```bash
+nix shell nixpkgs#file nixpkgs#which nixpkgs#hello nixpkgs#bash --command file $(which hello)
+```
 
 
 ```bash
@@ -433,6 +464,22 @@ build \
 'github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello'
 ```
 
+```bash
+nix \
+    --option eval-cache false \
+    --option build-use-substitutes true \
+    --option substitute true \
+    --option trusted-public-keys binarycache-1:iuW9hwt11/OqxdXo1Hf0r+1Vp3CxSvd9kok7xi0HqAM= \
+    --option trusted-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+    --extra-experimental-features 'nix-command flakes' \
+    build \
+    --keep-failed \
+    --no-link \
+    --print-build-logs \
+    --print-out-paths \
+    --substituters "s3://playing-bucket-nix-cache-test" \
+    'github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello'
+```
 
 
 #### pkgsStatic.hello
@@ -2237,6 +2284,21 @@ sudo nix store sign --all --key-file /etc/nix/private-key
 mkdir -pv ~/sandbox/sandbox && cd $_
 ```
 
+
+```bash
+cat > cache-pub-key.pem << 'EOF'
+binarycache-1:XiPHS/XT/ziMHu5hGoQ8Z0K88sa1Eqi5kFTYyl33FJg=
+EOF
+
+cat > cache-priv-key.pem << 'EOF'
+binarycache-1:LS3ApFX0izjIwKCDJFquhuF2+ENxhAv0jdF838AyhUVeI8dL9dP/OIwe7mEahDxnQrzyxrUSqLmQVNjKXfcUmA==
+EOF
+
+chown $USER -v cache-priv-key.pem \
+&& chmod 0600 -v cache-priv-key.pem
+```
+
+
 ```bash
 rm -frv custom-build-hook.sh
 
@@ -2251,22 +2313,25 @@ echo "^^ ${DRV_PATH} ^^"
 
 # set -x
 
-KEY_FILE=/etc/nix/private-key
+KEY_FILE=cache-priv-key.pem
 # Testar ?region=eu-west-1
 CACHE=s3://playing-bucket-nix-cache-test/
 
 # mapfile -t DERIVATIONS < <(echo "${OUT_PATHS[@]}" | xargs nix path-info --derivation)
-mapfile -t DERIVATIONS < <(echo "${OUT_PATHS[@]}" | xargs nix path-info)
-mapfile -t DEPENDENCIES < <(echo "${DRV_PATH[@]}" | xargs nix-store --query --requisites --include-outputs --force-realise)
+# mapfile -t DERIVATIONS < <(echo "${OUT_PATHS[@]}" | xargs nix path-info)
+# mapfile -t DEPENDENCIES < <(echo "${DRV_PATH[@]}" | xargs nix-store --query --requisites --include-outputs --force-realise)
+
+# Only runtime for now
+mapfile -t DEPENDENCIES < <(echo "${OUT_PATHS[@]}" | xargs nix path-info --recursive)
 
 # TODO: é o correto assinar as derivações, os .drv?
 # echo "${DERIVATIONS[@]}" | xargs nix store sign --key-file "$KEY_FILE" --recursive
 
 # TODO:
-# echo "${DEPENDENCIES[@]}" | xargs nix store sign --key-file "$KEY_FILE" --recursive
+echo "${DEPENDENCIES[@]}" | xargs nix store sign --key-file "$KEY_FILE" --recursive
 
-echo "${DEPENDENCIES[@]}" | xargs nix copy --eval-store auto --no-check-sigs -vvv --to "$CACHE"
-# echo "${DEPENDENCIES[@]}" | xargs nix copy -vvv --to "$CACHE"
+# echo "${DEPENDENCIES[@]}" | xargs nix copy --eval-store auto --no-check-sigs -vvv --to "$CACHE"
+echo "${DEPENDENCIES[@]}" | xargs nix copy -vvv --to "$CACHE"
 
 EOF
 
@@ -2276,9 +2341,16 @@ chmod -v 0755 custom-build-hook.sh
 ```
 
 ```bash
-nix build --max-jobs $(nproc) --rebuild --no-link --print-build-logs \
-nixpkgs#hello --post-build-hook ./custom-build-hook.sh
+nix \
+build \
+--max-jobs $(nproc) \
+--rebuild \
+--no-link \
+--print-build-logs \
+nixpkgs#hello \
+--post-build-hook ./custom-build-hook.sh
 ```
+
 
 ```bash
 nix build --rebuild nixpkgs#hello --post-build-hook ./custom-build-hook.sh
@@ -2692,3 +2764,25 @@ aws s3 ls
 ```
 https://github.com/aws/aws-cli/issues/3772#issuecomment-657038848
 
+
+
+
+```bash
+export NIXPKGS_ALLOW_UNFREE=1
+
+FLAKE_EXPR='github:NixOS/nixpkgs/f5ffd5787786dde3a8bf648c7a1b5f78c4e01abb#direnv'
+
+nix build --no-link --print-build-logs "$FLAKE_EXPR"
+
+nix path-info --impure --recursive "$FLAKE_EXPR" \
+| wc -l
+
+nix path-info --impure --recursive "$FLAKE_EXPR" \
+| xargs -I{} nix \
+    copy \
+    --max-jobs $(nproc) \
+    -vvv \
+    --no-check-sigs \
+    {} \
+    --to 's3://playing-bucket-nix-cache-test'
+```
