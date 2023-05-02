@@ -1,6 +1,7 @@
 provider "aws" {
   profile = "default"
   region  = "us-east-1"
+  # region  = "sa-east-1"
 }
 
 locals {

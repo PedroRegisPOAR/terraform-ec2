@@ -190,7 +190,7 @@ Build it from s3 custom cache AND the official cache:
 ```bash
 nix \
 --option eval-cache false \
---option extra-trusted-public-keys binarycache-1:3IpDUoZn47UKPA/SFvgrTLIskDMoxG8xyeqRP/f5RvM=% \
+--option extra-trusted-public-keys binarycache-1:3IpDUoZn47UKPA/SFvgrTLIskDMoxG8xyeqRP/f5RvM= \
 --option extra-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
 build \
 --keep-failed \
@@ -2294,9 +2294,11 @@ cat > cache-priv-key.pem << 'EOF'
 binarycache-1:LS3ApFX0izjIwKCDJFquhuF2+ENxhAv0jdF838AyhUVeI8dL9dP/OIwe7mEahDxnQrzyxrUSqLmQVNjKXfcUmA==
 EOF
 
-chown $USER -v cache-priv-key.pem \
+chown -v $USER cache-priv-key.pem \
 && chmod 0600 -v cache-priv-key.pem
 ```
+
+> Note: for Mac `chown -v $USER` must be in this order.
 
 
 ```bash
@@ -2347,8 +2349,299 @@ build \
 --rebuild \
 --no-link \
 --print-build-logs \
-nixpkgs#hello \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello \
 --post-build-hook ./custom-build-hook.sh
+```
+
+
+```bash
+nix \
+build \
+--max-jobs auto \
+--rebuild \
+--no-link \
+--print-build-logs \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#hello \
+--post-build-hook ./custom-build-hook.sh
+```
+
+
+```bash
+nix \
+build \
+--max-jobs $(nproc) \
+--rebuild \
+--no-link \
+--print-build-logs \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.hello \
+--post-build-hook ./custom-build-hook.sh
+```
+
+
+```bash
+nix \
+    --option build-use-substitutes false \
+    --option substitute true \
+    --option extra-trusted-public-keys binarycache-1:3IpDUoZn47UKPA/SFvgrTLIskDMoxG8xyeqRP/f5RvM= \
+    --option eval-cache false \
+    --option extra-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+    --extra-experimental-features 'nix-command flakes' \
+    build \
+    --keep-failed \
+    --max-jobs 0 \
+    --no-link \
+    --print-build-logs \
+    --print-out-paths \
+    --substituters "s3://playing-bucket-nix-cache-test/" \
+    'github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.hello'
+```
+
+
+```bash
+podman \
+run \
+--tty=true \
+--interactive=false \
+--rm=true \
+--volume="$HOME"/.aws/config:/root/.aws/config:ro \
+--volume="$HOME"/.aws/credentials:/root/.aws/credentials:ro \
+docker.io/nixpkgs/nix-flakes:latest \
+nix \
+    --option build-use-substitutes false \
+    --option substitute true \
+    --option extra-trusted-public-keys binarycache-1:3IpDUoZn47UKPA/SFvgrTLIskDMoxG8xyeqRP/f5RvM= \
+    --option eval-cache false \
+    --option extra-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+    --extra-experimental-features 'nix-command flakes' \
+    build \
+    --keep-failed \
+    --max-jobs 0 \
+    --no-link \
+    --print-build-logs \
+    --print-out-paths \
+    --substituters "s3://playing-bucket-nix-cache-test/" \
+    'github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.hello'
+```
+
+
+```bash
+nix \
+    --option build-use-substitutes false \
+    --option substitute true \
+    --option extra-trusted-public-keys binarycache-1:3IpDUoZn47UKPA/SFvgrTLIskDMoxG8xyeqRP/f5RvM= \
+    --option eval-cache false \
+    --option extra-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+    --extra-experimental-features 'nix-command flakes' \
+    build \
+    --keep-failed \
+    --max-jobs 0 \
+    --no-link \
+    --print-build-logs \
+    --print-out-paths \
+    --substituters "s3://playing-bucket-nix-cache-test/" \
+    /nix/store/x18ily7xgfvgmw0lljnh5n03kfqbp254-hello-static-x86_64-unknown-linux-musl-2.12.1
+```
+
+
+```bash
+nix --extra-experimental-features 'nix-command flakes' eval --raw \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsCross.x86_64-embedded.pkgsStatic.hello
+```
+
+
+```bash
+nix \
+--option extra-trusted-public-keys binarycache-1:3IpDUoZn47UKPA/SFvgrTLIskDMoxG8xyeqRP/f5RvM= \
+--extra-experimental-features 'nix-command flakes' \
+store \
+ls \
+--store s3://playing-bucket-nix-cache-test/ \
+--long \
+--recursive /nix/store/x18ily7xgfvgmw0lljnh5n03kfqbp254-hello-static-x86_64-unknown-linux-musl-2.12.1
+```
+
+
+```bash
+nix \
+--option extra-trusted-public-keys binarycache-1:3IpDUoZn47UKPA/SFvgrTLIskDMoxG8xyeqRP/f5RvM= \
+store \
+ls \
+--store s3://playing-bucket-nix-cache-test/ \
+--long \
+--recursive $(nix eval --raw github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.hello)/bin
+```
+
+```bash
+podman \
+run \
+--tty=true \
+--interactive=true \
+--rm=true \
+docker.io/nixpkgs/nix-flakes:latest 
+
+```
+
+```bash
+nix \
+    --extra-experimental-features 'nix-command flakes' \
+    --option build-use-substitutes true \
+    --option extra-trusted-public-keys binarycache-1:3IpDUoZn47UKPA/SFvgrTLIskDMoxG8xyeqRP/f5RvM= \
+    --option eval-cache true \
+    --option extra-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+    --option substitute true \
+    build \
+    --keep-failed \
+    --max-jobs 0 \
+    --no-link \
+    --print-build-logs \
+    --print-out-paths \
+    --substituters "s3://playing-bucket-nix-cache-test/" \
+    'github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.hello'
+```
+
+
+```bash
+# nix profile install nixpkgs#awscli 
+
+ATTR='github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix'
+export NIXPKGS_ALLOW_UNFREE=1
+
+nix path-info --impure --recursive "$ATTR" \
+| wc -l 
+
+nix path-info --impure --recursive "$ATTR" \
+| xargs -I{} nix \
+    copy \
+    --max-jobs auto \
+    -vvv \
+    --no-check-sigs \
+    {} \
+    --to 's3://playing-bucket-nix-cache-test'
+```
+
+
+```bash
+# 
+nix \
+build \
+--max-jobs auto \
+--no-link \
+--print-build-logs \
+--rebuild \
+--system aarch64-darwin \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix \
+--post-build-hook ./custom-build-hook.sh
+```
+
+
+```bash
+nix \
+--option sandbox true \
+build \
+--max-jobs auto \
+--no-link \
+--print-build-logs \
+--system aarch64-darwin \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix \
+--post-build-hook ./custom-build-hook.sh
+
+
+nix \
+--option sandbox true \
+build \
+--max-jobs auto \
+--no-link \
+--print-build-logs \
+--rebuild \
+--system aarch64-darwin \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix \
+--post-build-hook ./custom-build-hook.sh
+```
+
+--option allowed-impure-host-deps false \
+--option enforce-determinism false \
+--no-enforce-determinism \
+
+nix --option sandbox true --option allowed-impure-host-deps "/bin/sh" \
+build --keep-failed --max-jobs auto --no-link --print-build-logs \
+--rebuild --system aarch64-darwin \
+github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix
+
+```bash
+nix \
+--option extra-trusted-public-keys binarycache-1:3IpDUoZn47UKPA/SFvgrTLIskDMoxG8xyeqRP/f5RvM= \
+--extra-experimental-features 'nix-command flakes' \
+store \
+ls \
+--store s3://playing-bucket-nix-cache-test/ \
+--long \
+--recursive $(nix eval --raw --system aarch64-darwin github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix)/bin/nix
+```
+
+```bash
+nix \
+--option extra-trusted-public-keys binarycache-1:3IpDUoZn47UKPA/SFvgrTLIskDMoxG8xyeqRP/f5RvM= \
+--extra-experimental-features 'nix-command flakes' \
+store \
+ls \
+--store s3://playing-bucket-nix-cache-test/ \
+--long \
+--recursive $(nix eval --raw --system x86_64-darwin github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix)/bin/nix
+```
+
+```bash
+nix \
+--option extra-trusted-public-keys binarycache-1:3IpDUoZn47UKPA/SFvgrTLIskDMoxG8xyeqRP/f5RvM= \
+--extra-experimental-features 'nix-command flakes' \
+store \
+ls \
+--store s3://playing-bucket-nix-cache-test/ \
+--long \
+--recursive $(nix eval --raw --system aarch64-linux github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix)/bin/nix
+```
+
+```bash
+nix \
+--option extra-trusted-public-keys binarycache-1:3IpDUoZn47UKPA/SFvgrTLIskDMoxG8xyeqRP/f5RvM= \
+--extra-experimental-features 'nix-command flakes' \
+store \
+ls \
+--store s3://playing-bucket-nix-cache-test/ \
+--long \
+--recursive $(nix eval --raw --system x86_64-linux github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix)/bin/nix
+```
+
+
+```bash
+nix \
+    --extra-experimental-features 'nix-command flakes' \
+    --option build-use-substitutes true \
+    --option extra-trusted-public-keys binarycache-1:3IpDUoZn47UKPA/SFvgrTLIskDMoxG8xyeqRP/f5RvM= \
+    --option eval-cache true \
+    --option extra-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+    --option substitute true \
+    build \
+    --keep-failed \
+    --max-jobs 0 \
+    --no-link \
+    --print-build-logs \
+    --print-out-paths \
+    --substituters "s3://playing-bucket-nix-cache-test/" \
+    --system aarch64-darwin \
+    "$(nix eval --raw --system aarch64-darwin github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix.out)"
+```
+
+
+
+```bash
+nix \
+--option extra-trusted-public-keys binarycache-1:3IpDUoZn47UKPA/SFvgrTLIskDMoxG8xyeqRP/f5RvM= \
+--extra-experimental-features 'nix-command flakes' \
+store \
+ls \
+--store s3://playing-bucket-nix-cache-test/ \
+--long \
+--recursive "$(nix eval --raw --system aarch64-darwin github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix)"/bin/nix
 ```
 
 

@@ -5,6 +5,8 @@ module "bucket-nix-cache-test" {
 
   attach_policy = true
 
+  # https://docs.aws.amazon.com/pt_br/AmazonS3/latest/userguide/example-bucket-policies.html#example-bucket-policies-acl-1
+  # AllowDirectReads vs AddPublicReadCannedAcl
   policy = <<EOF
 {
     "Id": "DirectReads",
