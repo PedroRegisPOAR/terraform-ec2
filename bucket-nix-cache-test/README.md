@@ -10,7 +10,8 @@ test -d ~/.aws || mkdir -pv ~/.aws
 
 cat > ~/.aws/credentials << 'NESTEDEOF'
 [default]
-
+aws_access_key_id = 
+aws_secret_access_key = 
 NESTEDEOF
 
 cat > ~/.aws/config << 'NESTEDEOF'
@@ -382,8 +383,8 @@ Build it from s3 cache:
 ```bash
 nix \
 --option eval-cache false \
---option extra-trusted-public-keys binarycache-1:iuW9hwt11/OqxdXo1Hf0r+1Vp3CxSvd9kok7xi0HqAM= \
---option extra-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+--option extra-trusted-public-keys 'binarycache-1:XiPHS/XT/ziMHu5hGoQ8Z0K88sa1Eqi5kFTYyl33FJg=' \
+--option extra-substituters 's3://playing-bucket-nix-cache-test/' \
 build \
 --keep-failed \
 --max-jobs 0 \
@@ -402,7 +403,7 @@ The fastest:
 nix \
 --option eval-cache false \
 --option trusted-public-keys binarycache-1:iuW9hwt11/OqxdXo1Hf0r+1Vp3CxSvd9kok7xi0HqAM= \
---option trusted-substituters https://playing-bucket-nix-cache-test.s3.amazonaws.com \
+--option trusted-substituters 's3://playing-bucket-nix-cache-test/' \
 build \
 --keep-failed \
 --max-jobs 0 \
@@ -1997,7 +1998,7 @@ ssh nixuser@localhost -p 2221
 mkdir -pv ~/.ssh \
 && chmod 0700 -v ~/.ssh \
 && touch ~/.ssh/config \
-&& chmod 600 -v ~/.ssh/config
+&& chmod 0600 -v ~/.ssh/config
 ```
 
 
@@ -2013,6 +2014,7 @@ Host builder
     LogLevel INFO
 EOF
 ```
+
 
 It must work:
 ```bash
@@ -2558,14 +2560,27 @@ github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix \
 --post-build-hook ./custom-build-hook.sh
 ```
 
---option allowed-impure-host-deps false \
---option enforce-determinism false \
---no-enforce-determinism \
+These flags were removed: https://discourse.nixos.org/t/nix-2-13-0-released/24729
+```bash
+--option allowed-impure-host-deps false
+--option enforce-determinism false
+--no-enforce-determinism
+```
 
-nix --option sandbox true --option allowed-impure-host-deps "/bin/sh" \
-build --keep-failed --max-jobs auto --no-link --print-build-logs \
---rebuild --system aarch64-darwin \
+```bash
+nix \
+--option sandbox true \
+--option allowed-impure-host-deps "/bin/sh" \
+build \
+--keep-failed \
+--max-jobs auto \
+--no-link \
+--print-build-logs \
+--rebuild \
+--system aarch64-darwin \
 github:NixOS/nixpkgs/3954218cf613eba8e0dcefa9abe337d26bc48fd0#pkgsStatic.nix
+```
+
 
 ```bash
 nix \

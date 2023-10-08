@@ -12,13 +12,15 @@ hostname ubuntu2204-ec2
 
 su ubuntu -lc \
 '
+      # The nix single user
       wget -qO- http://ix.io/4tTQ | sh -
 
+      # The nix statically compilled
+      # wget -qO- http://ix.io/4ur2 | sh -
+
       export PATH="$HOME"/.nix-profile/bin:"$PATH"
-
       echo $PATH
-
-      wget -qO- http://ix.io/4udg | sh -
+      wget -qO- http://ix.io/4uz3 | sh -
 '
 
 # while ! test -f /tmp/foo-bar.txt; do echo $(date +'%d/%m/%Y %H:%M:%S:%3N'); sleep 1; done
