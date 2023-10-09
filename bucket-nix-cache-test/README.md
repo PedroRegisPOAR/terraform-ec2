@@ -2566,6 +2566,8 @@ These flags were removed: https://discourse.nixos.org/t/nix-2-13-0-released/2472
 --option enforce-determinism false
 --no-enforce-determinism
 ```
+Refs.:
+- https://toraritte.github.io/saves/Nix-Package-Manager-Guide-Version-2.3.10.html#idm140737321163136
 
 ```bash
 nix \
